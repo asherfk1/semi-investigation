@@ -76,7 +76,28 @@ app.get("/api/apify/run/:runId/items", async (req, res) => {
       return res.status(r.status).json({ error: `Items fetch failed: ${t.slice(0, 200)}` });
     }
     const data = await r.json();
+    // Log first item to Render logs so we can see raw field names
+    if (Array.isArray(data) && data.length > 0) {
+      console.log("=== APIFY RAW FIRST ITEM KEYS ===", Object.keys(data[0]));
+      console.log("=== APIFY RAW FIRST ITEM ===", JSON.stringify(data[0], null, 2).slice(0, 2000));
+    }
     res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Debug: return raw first item from last run ────────────────────────────
+app.get("/api/debug/lastrun", async (req, res) => {
+  const { token, runId } = req.query;
+  if (!token || !runId) return res.status(400).json({ error: "token and runId required" });
+  try {
+    const r = await fetch(
+      `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${token}&limit=1&clean=true`
+    );
+    const data = await r.json();
+    // Return full raw item so we can see every field name
+    res.json({ raw: data[0] || null, allKeys: data[0] ? Object.keys(data[0]) : [] });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
