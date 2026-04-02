@@ -32,10 +32,10 @@ app.get("/api/apify/verify", async (req, res) => {
 });
 
 // ── Start Apify actor run ─────────────────────────────────────────────────
-// Using POST body for actorId to avoid URL encoding issues with "owner/name" format
-app.post("/api/apify/run", async (req, res) => {
-  const { actorId, token, input } = req.body;
-  if (!token || !input || !actorId) return res.status(400).json({ error: "actorId, token and input required" });
+app.post("/api/apify/run/:actorId", async (req, res) => {
+  const { actorId }      = req.params;
+  const { token, input } = req.body;
+  if (!token || !input) return res.status(400).json({ error: "token and input required" });
   try {
     const r = await fetch(
       `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}&memory=512`,

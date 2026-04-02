@@ -18,7 +18,7 @@ const COMMUNITY_VIOLATIONS = [
 const APIFY_ACTORS = {
   "X (Twitter)":  { id:"61RPP7dywgiy0JPD0", name:"Twitter/X Scraper" },
   Instagram:      { id:"shu8hvrXbJbY3Eb9W", name:"Instagram Scraper" },
-  Facebook:       { id:"apify/facebook-posts-scraper", name:"Facebook Posts Scraper" },
+  Facebook:       { id:"KoJrdxJCTtpon81KY", name:"Facebook Scraper" },
   TikTok:         { id:"OtzYfK1ndEGdwWFKQ", name:"TikTok Scraper" },
   YouTube:        { id:"h7LD7yIg3aaQ3gHDS", name:"YouTube Scraper" },
 };
@@ -69,9 +69,9 @@ async function apiVerify(token) {
   return r.json();
 }
 async function apiStartRun(actorId, input, token) {
-  const r = await fetch(`${API}/api/apify/run`, {
+  const r = await fetch(`${API}/api/apify/run/${actorId}`, {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ actorId, token, input }),
+    body:JSON.stringify({ token, input }),
   });
   if (!r.ok) { const t=await r.text(); throw new Error(`Run start failed (${r.status}): ${t.slice(0,200)}`); }
   return r.json();
