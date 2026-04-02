@@ -178,11 +178,9 @@ async function fetchPosts(profileUrl, platform, postCount, token) {
       // For albums store all image URLs as comma-separated for report
       const allImgUrls = mediaItems.map(m => findImgUrl(m)).filter(Boolean);
 
-      url = item.url||item.facebookUrl||item.topLevelUrl||item.postUrl||profileUrl;
-
       // Store extra images for display
       if (allImgUrls.length > 1) item._extraImages = allImgUrls.slice(1, 4);
-    }
+      url = item.url||item.facebookUrl||item.topLevelUrl||item.postUrl||profileUrl;
     } else if (platform==="TikTok") {
       content=item.text||item.desc||"";
       date=item.createTime||item.createTimeISO||"";
