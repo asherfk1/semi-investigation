@@ -20,11 +20,15 @@ app.get("/api/health", (req, res) => {
 
 // ── Verify Apify token ────────────────────────────────────────────────────
 app.get("/api/apify/verify", async (req, res) => {
-  const { token } = req.query;
+  const token = (req.query.token || "").trim();
   if (!token) return res.status(400).json({ error: "token required" });
+  if (!token.startsWith("apify_api_")) {
+    return res.status(400).json({ error: `Token format invalid — received: "${token.slice(0,20)}..." — must start with apify_api_` });
+  }
   try {
     const r    = await fetch(`https://api.apify.com/v2/users/me?token=${token}`);
     const data = await r.json();
+    console.log("Apify verify response:", JSON.stringify(data).slice(0, 200));
     res.status(r.status).json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });

@@ -62,10 +62,11 @@ function platformColor(pf) {
 }
 
 // ── Backend API calls (all go through /api/*) ─────────────────────────────
-const API = "https://semi-investigation.onrender.com"; // same origin in production
+const API = window.location.origin; // same origin in production
 
 async function apiVerify(token) {
-  const r = await fetch(`${API}/api/apify/verify?token=${token}`);
+  const clean = token.trim();
+  const r = await fetch(`${API}/api/apify/verify?token=${clean}`);
   return r.json();
 }
 async function apiStartRun(actorId, input, token) {
@@ -401,6 +402,7 @@ export default function App() {
   async function startAnalysis() {
     const c = loadCfg();
     if (!c.apifyToken) { setFetchError("Apify token not configured. Open Settings."); return; }
+    const cleanToken = c.apifyToken.trim();
     setFetchError(null);
     const pf     = detectedPf;
     const handle = extractHandle(profileUrl, pf);
@@ -414,7 +416,7 @@ export default function App() {
     let fetched = [];
     try {
       setProgress({current:0,total:0,phase:"fetch",msg:`Fetching posts from ${pf} via Apify…`});
-      fetched = await fetchPosts(profileUrl, pf, postCount, c.apifyToken.trim());
+      fetched = await fetchPosts(profileUrl, pf, postCount, cleanToken);
       setPosts(fetched);
     } catch(e) {
       setFetchError("Apify error: "+e.message);
@@ -425,8 +427,7 @@ export default function App() {
     for (let i=0; i<fetched.length; i++) {
       const p = fetched[i];
       setProgress({current:i+1,total:fetched.length,phase:"ai",msg:`Analysing post ${i+1} of ${fetched.length} with Claude AI…`});
-      try { results[p.id] = await apiAnalyse(p, acct, pf, c); }
-      catch(e) { results[p.id]={severity:"medium",confidence:70,violations:[],peca:[],summary:"Error: "+e.message,risk_level:"Unknown"}; }
+      try { results[p.id] = await apiAnalyse(p, acct, pf, c); }      catch(e) { results[p.id]={severity:"medium",confidence:70,violations:[],peca:[],summary:"Error: "+e.message,risk_level:"Unknown"}; }
     }
     setAiResults(results);
     setStep("review");
