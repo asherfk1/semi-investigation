@@ -165,6 +165,7 @@ function PostCard({ post, account, platform }) {
   const pfKey={"X (Twitter)":"tw",Instagram:"ig",Facebook:"fb",TikTok:"tt",YouTube:"yt"}[platform]||"tw";
   const bg=platformColor(platform);
   const [imgError, setImgError] = useState(false);
+  const proxiedUrl = proxyImg(post.mediaUrl);
   const Media=()=>{
     if(!post.mediaUrl) return null;
     if(imgError) return (
@@ -179,12 +180,10 @@ function PostCard({ post, account, platform }) {
     return (
       <div style={{width:"100%",height:160,background:"#111",borderRadius:4,overflow:"hidden",position:"relative"}}>
         <img
-          src={post.mediaUrl}
+          src={proxiedUrl}
           alt="post media"
           style={{width:"100%",height:"100%",objectFit:"cover"}}
           onError={()=>setImgError(true)}
-          referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
         />
         {post.type==="video"&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.4)"}}>
           <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid rgba(255,255,255,0.6)"}}>
