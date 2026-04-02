@@ -33,12 +33,14 @@ app.get("/api/apify/verify", async (req, res) => {
 
 // ── Start Apify actor run ─────────────────────────────────────────────────
 app.post("/api/apify/run/:actorId", async (req, res) => {
-  const { actorId }    = req.params;
+  const { actorId }      = req.params;
   const { token, input } = req.body;
   if (!token || !input) return res.status(400).json({ error: "token and input required" });
   try {
+    // actorId can be in format "owner/name" or just an ID — both work with Apify
+    const encodedActorId = encodeURIComponent(actorId);
     const r = await fetch(
-      `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}&memory=512`,
+      `https://api.apify.com/v2/acts/${encodedActorId}/runs?token=${token}&memory=512`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }
     );
     const data = await r.json();
