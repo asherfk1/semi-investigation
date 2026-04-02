@@ -164,11 +164,28 @@ async function fetchPosts(profileUrl, platform, postCount, token) {
 function PostCard({ post, account, platform }) {
   const pfKey={"X (Twitter)":"tw",Instagram:"ig",Facebook:"fb",TikTok:"tt",YouTube:"yt"}[platform]||"tw";
   const bg=platformColor(platform);
+  const [imgError, setImgError] = useState(false);
   const Media=()=>{
     if(!post.mediaUrl) return null;
+    if(imgError) return (
+      <div style={{width:"100%",height:120,background:"#1a1a1a",borderRadius:4,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
+        {post.type==="video"
+          ? <svg width="28" height="28" viewBox="0 0 24 24" fill="#666"><path d="M8 5v14l11-7z"/></svg>
+          : <svg width="28" height="28" viewBox="0 0 24 24" fill="#666"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+        }
+        <span style={{fontSize:10,color:"#666"}}>{post.type==="video"?"Video":"Image"} — preview unavailable</span>
+      </div>
+    );
     return (
       <div style={{width:"100%",height:160,background:"#111",borderRadius:4,overflow:"hidden",position:"relative"}}>
-        <img src={post.mediaUrl} alt="media" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none"}}/>
+        <img
+          src={post.mediaUrl}
+          alt="post media"
+          style={{width:"100%",height:"100%",objectFit:"cover"}}
+          onError={()=>setImgError(true)}
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
+        />
         {post.type==="video"&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.4)"}}>
           <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid rgba(255,255,255,0.6)"}}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><polygon points="4,2 13,8 4,14"/></svg>
