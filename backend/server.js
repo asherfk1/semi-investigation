@@ -32,15 +32,13 @@ app.get("/api/apify/verify", async (req, res) => {
 });
 
 // ── Start Apify actor run ─────────────────────────────────────────────────
-app.post("/api/apify/run/:actorId", async (req, res) => {
-  const { actorId }      = req.params;
-  const { token, input } = req.body;
-  if (!token || !input) return res.status(400).json({ error: "token and input required" });
+// Using POST body for actorId to avoid URL encoding issues with "owner/name" format
+app.post("/api/apify/run", async (req, res) => {
+  const { actorId, token, input } = req.body;
+  if (!token || !input || !actorId) return res.status(400).json({ error: "actorId, token and input required" });
   try {
-    // actorId can be in format "owner/name" or just an ID — both work with Apify
-    const encodedActorId = encodeURIComponent(actorId);
     const r = await fetch(
-      `https://api.apify.com/v2/acts/${encodedActorId}/runs?token=${token}&memory=512`,
+      `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}&memory=512`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }
     );
     const data = await r.json();
@@ -51,12 +49,11 @@ app.post("/api/apify/run/:actorId", async (req, res) => {
 });
 
 // ── Poll run status ───────────────────────────────────────────────────────
-app.get("/api/apify/run/:actorId/:runId/status", async (req, res) => {
+app.get("/api/apify/run/:runId/status", async (req, res) => {
   const { runId } = req.params;
   const { token } = req.query;
   if (!token) return res.status(400).json({ error: "token required" });
   try {
-    // Use actor-runs endpoint — works regardless of actorId format
     const r    = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`);
     const data = await r.json();
     res.status(r.status).json(data);
@@ -66,27 +63,17 @@ app.get("/api/apify/run/:actorId/:runId/status", async (req, res) => {
 });
 
 // ── Fetch dataset items ───────────────────────────────────────────────────
-app.get("/api/apify/run/:actorId/:runId/items", async (req, res) => {
+app.get("/api/apify/run/:runId/items", async (req, res) => {
   const { runId }        = req.params;
   const { token, limit } = req.query;
   if (!token) return res.status(400).json({ error: "token required" });
   try {
-    // Use the run's own dataset endpoint — more reliable than actor-scoped URL
     const r = await fetch(
-      `https://api.apify.com/v2/datasets/${runId}/items?token=${token}&limit=${limit || 20}&clean=true`
+      `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${token}&limit=${limit || 20}&clean=true`
     );
     if (!r.ok) {
       const t = await r.text();
-      // Fallback: try fetching via run ID directly
-      const r2 = await fetch(
-        `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${token}&limit=${limit || 20}`
-      );
-      if (!r2.ok) {
-        const t2 = await r2.text();
-        return res.status(404).json({ error: `Items fetch failed: ${t2.slice(0, 200)}` });
-      }
-      const data2 = await r2.json();
-      return res.json(data2);
+      return res.status(r.status).json({ error: `Items fetch failed: ${t.slice(0, 200)}` });
     }
     const data = await r.json();
     res.json(data);

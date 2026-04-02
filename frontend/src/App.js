@@ -69,18 +69,19 @@ async function apiVerify(token) {
   return r.json();
 }
 async function apiStartRun(actorId, input, token) {
-  const r = await fetch(`${API}/api/apify/run/${actorId}`, {
-    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({token,input}),
+  const r = await fetch(`${API}/api/apify/run`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ actorId, token, input }),
   });
   if (!r.ok) { const t=await r.text(); throw new Error(`Run start failed (${r.status}): ${t.slice(0,200)}`); }
   return r.json();
 }
 async function apiPollStatus(actorId, runId, token) {
-  const r = await fetch(`${API}/api/apify/run/${actorId}/${runId}/status?token=${token}`);
+  const r = await fetch(`${API}/api/apify/run/${runId}/status?token=${token}`);
   return r.json();
 }
 async function apiGetItems(actorId, runId, token, limit) {
-  const r = await fetch(`${API}/api/apify/run/${actorId}/${runId}/items?token=${token}&limit=${limit}`);
+  const r = await fetch(`${API}/api/apify/run/${runId}/items?token=${token}&limit=${limit}`);
   if (!r.ok) { const t=await r.text(); throw new Error(`Items fetch failed (${r.status}): ${t.slice(0,200)}`); }
   return r.json();
 }
