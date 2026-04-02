@@ -98,9 +98,9 @@ async function fetchPosts(profileUrl, platform, postCount, token) {
   const inputs = {
     "X (Twitter)": {startUrls:[{url:profileUrl}],maxItems:postCount,addUserInfo:true},
     Instagram:     {directUrls:[profileUrl],resultsLimit:postCount,resultsType:"posts"},
-    Facebook:      {startUrls:[{url:profileUrl}],maxPosts:postCount},
-    TikTok:        {profiles:[profileUrl],resultsPerPage:postCount},
-    YouTube:       {startUrls:[{url:profileUrl}],maxResults:postCount},
+    Facebook:      {startUrls:[{url:profileUrl}],maxPosts:postCount,maxPostComments:0,maxReviews:0,scrapeAbout:false,scrapeReviews:false,scrapeServices:false},
+    TikTok:        {profiles:[profileUrl],resultsPerPage:postCount,maxItems:postCount},
+    YouTube:       {startUrls:[{url:profileUrl}],maxResults:postCount,maxVideos:postCount},
   };
   const runData = await apiStartRun(actor.id, inputs[platform]||{startUrls:[{url:profileUrl}]}, token);
   const runId   = runData?.data?.id;
@@ -611,10 +611,17 @@ export default function App() {
 
         {detectedPf&&<div style={s.card}>
           <div style={s.sec}>Posts to retrieve</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
             {[5,10,15,20].map(n=>(
-              <button key={n} onClick={()=>setPostCount(n)} style={s.btn(postCount===n?"#185FA5":"#f0f0f0",postCount===n?"#fff":"#333","1px solid "+(postCount===n?"#185FA5":"#ccc"))}>Last {n}</button>
+              <button key={n} onClick={()=>setPostCount(n)}
+                style={{...s.btn(postCount===n?"#185FA5":"#f0f0f0",postCount===n?"#fff":"#333","1px solid "+(postCount===n?"#185FA5":"#ccc")),
+                  fontWeight:postCount===n?700:500, minWidth:64}}>
+                {postCount===n?"✓ ":""}{n} posts
+              </button>
             ))}
+          </div>
+          <div style={{fontSize:12,color:"#185FA5",fontWeight:500}}>
+            Selected: last <b>{postCount}</b> posts will be fetched and analysed
           </div>
         </div>}
 
