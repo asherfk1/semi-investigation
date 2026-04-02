@@ -140,37 +140,49 @@ async function fetchPosts(profileUrl, platform, postCount, token) {
       mediaUrl=item.displayUrl||item.thumbnailUrl||null;
       url=item.url||(item.shortCode?`https://instagram.com/p/${item.shortCode}`:profileUrl);
     } else if (platform==="Facebook") {
-      const mediaItems=item.media||[];
-      const firstMedia=mediaItems[0]||null;
-      const rawText=item.text||item.message||item.story||item.title||item.description||item.caption||"";
-      content=rawText.trim()||(
-        mediaItems.length>1?`[Album — ${mediaItems.length} items, no caption]`:
-        firstMedia?.__typename==="Video"?"[Video post — no caption]":
-        mediaItems.length>0?"[Image post — no caption]":"[Post with no text]"
-      );
-      date=item.time||item.timestamp||"";
-      likes=typeof item.likes==="number"?item.likes:item.reactionLikeCount||0;
-      shares=typeof item.shares==="number"?item.shares:0;
-      comments=typeof item.comments==="number"?item.comments:0;
-      type=mediaItems.some(m=>m.__typename==="Video"||m.__typename==="VideoStory")?"video":mediaItems.length>0?"image":"text";
-      // Try every known Facebook media URL location
-      mediaUrl=firstMedia?.photo_image?.uri
-              ||firstMedia?.photo_image?.src
-              ||firstMedia?.thumbnail
-              ||firstMedia?.image?.uri
-              ||firstMedia?.image?.src
-              ||firstMedia?.media?.image?.uri
-              ||firstMedia?.media?.image?.src
-              ||firstMedia?.large_share_image?.uri
-              ||firstMedia?.url
-              ||(mediaItems.length>0?Object.values(firstMedia||{}).find(v=>typeof v==="string"&&(v.includes("fbcdn")||v.includes("facebook"))):null)
-              ||item.full_picture||item.picture||null;
-      url=item.url||item.facebookUrl||item.topLevelUrl||item.postUrl||profileUrl;
-      // Log to browser console so we can see what fields are available
-      if (!mediaUrl && mediaItems.length>0) {
-        console.log("Facebook post missing image — firstMedia keys:", Object.keys(firstMedia||{}));
-        console.log("firstMedia full:", JSON.stringify(firstMedia, null, 2).slice(0, 500));
-      }
+      const mediaItems = item.media||[];
+      const rawText    = item.text||item.message||item.story||item.title||item.description||item.caption||"";
+
+      // Extract OCR text from all media items (Facebook reads text in images)
+      const ocrTexts = mediaItems
+        .map(m => m.ocrText||"")
+        .filter(t => t && !t.startsWith("May be an image"))
+        .join(" ");
+
+      content = rawText.trim() ||
+        (mediaItems.length>1 ? `[Album — ${mediaItems.length} images, no caption]` :
+         mediaItems.some(m=>m.__typename==="Video") ? "[Video post — no caption]" :
+         mediaItems.length>0 ? "[Image post — no caption]" : "[Post with no text]");
+
+      // Append OCR text if meaningful
+      if (ocrTexts) content += `\n\nText in image (OCR): ${ocrTexts}`;
+
+      date     = item.time||item.timestamp||"";
+      likes    = typeof item.likes==="number" ? item.likes : item.reactionLikeCount||0;
+      shares   = typeof item.shares==="number" ? item.shares : 0;
+      comments = typeof item.comments==="number" ? item.comments : 0;
+      type     = mediaItems.some(m=>m.__typename==="Video"||m.__typename==="VideoStory") ? "video"
+               : mediaItems.length>0 ? "image" : "text";
+
+      // Find first media item that actually has an image URL
+      // Post 3 shows album cover as media[0] with no image — skip those, find real image
+      const findImgUrl = m =>
+        m?.photo_image?.uri || m?.photo_image?.src ||
+        m?.image?.uri       || m?.image?.src       ||
+        m?.thumbnail        || null;
+
+      // Try all media items until we find one with a real image URL
+      const realMedia = mediaItems.find(m => findImgUrl(m) !== null);
+      mediaUrl = findImgUrl(realMedia) || item.full_picture || item.picture || null;
+
+      // For albums store all image URLs as comma-separated for report
+      const allImgUrls = mediaItems.map(m => findImgUrl(m)).filter(Boolean);
+
+      url = item.url||item.facebookUrl||item.topLevelUrl||item.postUrl||profileUrl;
+
+      // Store extra images for display
+      if (allImgUrls.length > 1) item._extraImages = allImgUrls.slice(1, 4);
+    }
     } else if (platform==="TikTok") {
       content=item.text||item.desc||"";
       date=item.createTime||item.createTimeISO||"";
@@ -189,7 +201,7 @@ async function fetchPosts(profileUrl, platform, postCount, token) {
       mediaUrl=item.thumbnailUrl||item.thumbnail||null;
       url=item.url||`https://youtube.com/watch?v=${item.id||i}`;
     }
-    return {id:i+1,content:content||"(no text)",date:formatDate(date),likes,shares,comments,type,mediaUrl,url};
+    return {id:i+1,content:content||"(no text)",date:formatDate(date),likes,shares,comments,type,mediaUrl,url,extraImages:item._extraImages||[]};
   });
 }
 
@@ -205,13 +217,29 @@ function PostCard({ post, account, platform }) {
       <span style={{fontSize:11,color:"#555"}}>{post.type==="video"?"▶ Video":"🖼 Image"} — preview unavailable</span>
     </div>
   ) : (
-    <div style={{width:"100%",height:160,background:"#111",borderRadius:4,overflow:"hidden",position:"relative"}}>
-      <img src={proxied} alt="media" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={()=>setImgErr(true)}/>
-      {post.type==="video"&&(
-        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.4)"}}>
-          <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid rgba(255,255,255,0.6)"}}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><polygon points="4,2 13,8 4,14"/></svg>
+    <div>
+      <div style={{width:"100%",height:160,background:"#111",borderRadius:4,overflow:"hidden",position:"relative"}}>
+        <img src={proxied} alt="media" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={()=>setImgErr(true)}/>
+        {post.type==="video"&&(
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.4)"}}>
+            <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid rgba(255,255,255,0.6)"}}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><polygon points="4,2 13,8 4,14"/></svg>
+            </div>
           </div>
+        )}
+      </div>
+      {post.extraImages?.length>0&&(
+        <div style={{display:"flex",gap:4,marginTop:4}}>
+          {post.extraImages.map((imgUrl,i)=>(
+            <div key={i} style={{flex:1,height:70,background:"#111",borderRadius:4,overflow:"hidden"}}>
+              <img
+                src={`${BACKEND}/api/image-proxy?url=${encodeURIComponent(imgUrl)}`}
+                alt={`media ${i+2}`}
+                style={{width:"100%",height:"100%",objectFit:"cover"}}
+                onError={e=>e.target.style.display="none"}
+              />
+            </div>
+          ))}
         </div>
       )}
     </div>
