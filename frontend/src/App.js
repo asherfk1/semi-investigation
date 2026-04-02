@@ -61,8 +61,10 @@ function platformColor(pf) {
   return {"X (Twitter)":"#1DA1F2",Instagram:"#E1306C",Facebook:"#1877F2",TikTok:"#ff0050",YouTube:"#FF0000"}[pf]||"#555";
 }
 
-// ── Backend API calls (all go through /api/*) ─────────────────────────────
-const API = "https://semi-investigation.onrender.com"; // same origin in production
+// ── Backend API URL ───────────────────────────────────────────────────────
+// IMPORTANT: Always point to the Render backend service.
+// Never use window.location.origin — frontend and backend are separate services.
+const API = process.env.REACT_APP_BACKEND_URL || "https://semi-investigation.onrender.com";
 
 async function apiVerify(token) {
   const clean = token.trim();
@@ -240,13 +242,18 @@ function Settings({ onClose }) {
 
   const save = () => { saveCfg(cfg); setSaved(true); setTimeout(()=>setSaved(false),2000); };
 
+  const BACKEND = process.env.REACT_APP_BACKEND_URL || "https://semi-investigation.onrender.com";
+
   const testConnection = async () => {
     setTestResult("testing");
     try {
-      if (!cfg.apifyToken?.trim()) { setTestResult("err:Token is empty"); return; }
-      if (!cfg.apifyToken.startsWith("apify_api_")) { setTestResult("err:Token should start with apify_api_"); return; }
-      const data = await apiVerify(cfg.apifyToken.trim());
+      const token = (cfg.apifyToken||"").trim();
+      if (!token) { setTestResult("err:Token is empty — paste your Apify API token"); return; }
+      if (!token.startsWith("apify_api_")) { setTestResult("err:Token should start with apify_api_"); return; }
+      const r    = await fetch(`${BACKEND}/api/apify/verify?token=${token}`);
+      const data = await r.json();
       if (data?.data?.username) setTestResult("ok:"+data.data.username);
+      else if (data?.error) setTestResult("err:"+data.error);
       else setTestResult("err:Unexpected response — "+JSON.stringify(data).slice(0,80));
     } catch(e) { setTestResult("err:"+e.message); }
   };
