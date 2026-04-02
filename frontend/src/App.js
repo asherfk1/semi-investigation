@@ -62,7 +62,7 @@ function platformColor(pf) {
 }
 
 // ── Backend API calls (all go through /api/*) ─────────────────────────────
-const API = window.location.origin; // same origin in production
+const API = "https://semi-investigation.onrender.com"; // same origin in production
 
 async function apiVerify(token) {
   const clean = token.trim();
