@@ -153,8 +153,24 @@ async function fetchPosts(profileUrl, platform, postCount, token) {
       shares=typeof item.shares==="number"?item.shares:0;
       comments=typeof item.comments==="number"?item.comments:0;
       type=mediaItems.some(m=>m.__typename==="Video"||m.__typename==="VideoStory")?"video":mediaItems.length>0?"image":"text";
-      mediaUrl=firstMedia?.photo_image?.uri||firstMedia?.photo_image?.src||firstMedia?.thumbnail||firstMedia?.image?.uri||item.full_picture||item.picture||null;
-      url=item.url||item.facebookUrl||item.topLevelUrl||profileUrl;
+      // Try every known Facebook media URL location
+      mediaUrl=firstMedia?.photo_image?.uri
+              ||firstMedia?.photo_image?.src
+              ||firstMedia?.thumbnail
+              ||firstMedia?.image?.uri
+              ||firstMedia?.image?.src
+              ||firstMedia?.media?.image?.uri
+              ||firstMedia?.media?.image?.src
+              ||firstMedia?.large_share_image?.uri
+              ||firstMedia?.url
+              ||(mediaItems.length>0?Object.values(firstMedia||{}).find(v=>typeof v==="string"&&(v.includes("fbcdn")||v.includes("facebook"))):null)
+              ||item.full_picture||item.picture||null;
+      url=item.url||item.facebookUrl||item.topLevelUrl||item.postUrl||profileUrl;
+      // Log to browser console so we can see what fields are available
+      if (!mediaUrl && mediaItems.length>0) {
+        console.log("Facebook post missing image — firstMedia keys:", Object.keys(firstMedia||{}));
+        console.log("firstMedia full:", JSON.stringify(firstMedia, null, 2).slice(0, 500));
+      }
     } else if (platform==="TikTok") {
       content=item.text||item.desc||"";
       date=item.createTime||item.createTimeISO||"";
