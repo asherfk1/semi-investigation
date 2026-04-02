@@ -19,7 +19,7 @@ const COMMUNITY_VIOLATIONS = [
 const APIFY_ACTORS = {
   "X (Twitter)": { id:"61RPP7dywgiy0JPD0" },
   Instagram:     { id:"shu8hvrXbJbY3Eb9W" },
-  Facebook:      { id:"KoJrdxJCTtpon81KY" },
+  Facebook:      { id:"apify~facebook-posts-scraper" },
   TikTok:        { id:"OtzYfK1ndEGdwWFKQ" },
   YouTube:       { id:"h7LD7yIg3aaQ3gHDS" },
 };
@@ -98,7 +98,17 @@ async function fetchPosts(profileUrl, platform, postCount, token) {
   const inputs = {
     "X (Twitter)": {startUrls:[{url:profileUrl}],maxItems:postCount,addUserInfo:true},
     Instagram:     {directUrls:[profileUrl],resultsLimit:postCount,resultsType:"posts"},
-    Facebook:      {startUrls:[{url:profileUrl}],maxPosts:postCount,maxPostComments:0,maxReviews:0,scrapeAbout:false,scrapeReviews:false,scrapeServices:false},
+    Facebook: {
+      startUrls:          [{ url: profileUrl }],
+      resultsLimit:       postCount,
+      maxPosts:           postCount,
+      maxPostComments:    0,
+      maxReviews:         0,
+      scrapeAbout:        false,
+      scrapeReviews:      false,
+      scrapeServices:     false,
+      scrapePostsUntilDate: "",
+    },
     TikTok:        {profiles:[profileUrl],resultsPerPage:postCount,maxItems:postCount},
     YouTube:       {startUrls:[{url:profileUrl}],maxResults:postCount,maxVideos:postCount},
   };
