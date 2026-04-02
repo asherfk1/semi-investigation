@@ -40,12 +40,14 @@ app.post("/api/apify/run/:actorId", async (req, res) => {
   const { actorId }      = req.params;
   const { token, input } = req.body;
   if (!token || !input) return res.status(400).json({ error: "token and input required" });
+  console.log("=== APIFY RUN INPUT ===", JSON.stringify({ actorId, input }, null, 2));
   try {
     const r = await fetch(
       `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}&memory=512`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }
     );
     const data = await r.json();
+    console.log("=== APIFY RUN RESPONSE ===", JSON.stringify(data?.data?.id||data?.error||data).slice(0,200));
     res.status(r.status).json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
