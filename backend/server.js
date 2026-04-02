@@ -92,7 +92,6 @@ app.get("/api/apify/run/:runId/items", async (req, res) => {
 });
 
 // ── Image proxy — fetches image server-side and serves it ─────────────────
-// Bypasses Facebook/Instagram CDN blocks on third-party sites
 app.get("/api/image-proxy", async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "url required" });
@@ -100,22 +99,22 @@ app.get("/api/image-proxy", async (req, res) => {
     const decoded = decodeURIComponent(url);
     const r = await fetch(decoded, {
       headers: {
-        // Pretend to be a browser visiting Facebook directly
-        "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer":         "https://www.facebook.com/",
-        "Accept":          "image/webp,image/apng,image/*,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer":    "https://www.facebook.com/",
+        "Accept":     "image/webp,image/apng,image/*,*/*;q=0.8",
       },
     });
-    if (!r.ok) return res.status(r.status).json({ error: "Image fetch failed: "+r.status });
+    if (!r.ok) return res.status(r.status).send("Image fetch failed");
     const contentType = r.headers.get("content-type") || "image/jpeg";
-    const buffer      = await r.buffer();
+    // Use arrayBuffer instead of buffer() — works with all node-fetch versions
+    const arrayBuf = await r.arrayBuffer();
+    const buffer   = Buffer.from(arrayBuf);
     res.set("Content-Type", contentType);
     res.set("Cache-Control", "public, max-age=3600");
     res.set("Access-Control-Allow-Origin", "*");
     res.send(buffer);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).send("Proxy error: " + e.message);
   }
 });
 app.get("/api/debug/lastrun", async (req, res) => {

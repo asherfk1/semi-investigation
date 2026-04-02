@@ -165,7 +165,9 @@ function PostCard({ post, account, platform }) {
   const pfKey={"X (Twitter)":"tw",Instagram:"ig",Facebook:"fb",TikTok:"tt",YouTube:"yt"}[platform]||"tw";
   const bg=platformColor(platform);
   const [imgError, setImgError] = useState(false);
-  const proxiedUrl = proxyImg(post.mediaUrl);
+  const proxiedUrl = post.mediaUrl
+    ? `https://semi-investigation.onrender.com/api/image-proxy?url=${encodeURIComponent(post.mediaUrl)}`
+    : null;
   const Media=()=>{
     if(!post.mediaUrl) return null;
     if(imgError) return (
@@ -201,7 +203,7 @@ function PostCard({ post, account, platform }) {
         <div><div style={{fontSize:13,fontWeight:700,color:"#e7e9ea"}}>{account.name}</div><div style={{fontSize:11,color:"#71767b"}}>{account.handle} · {post.date}</div></div>
       </div>
       <div style={{fontSize:13,color:"#e7e9ea",lineHeight:1.55,marginBottom:post.mediaUrl?8:0}}>{post.content.slice(0,280)}</div>
-      <Media/>
+      {mediaBlock}
       <div style={{display:"flex",gap:18,marginTop:9,color:"#71767b",fontSize:12}}><span>💬{numFmt(post.comments)}</span><span>🔁{numFmt(post.shares)}</span><span>❤️{numFmt(post.likes)}</span></div>
     </div>
   );
@@ -211,7 +213,7 @@ function PostCard({ post, account, platform }) {
         <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(45deg,#f09433,${bg})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{account.avatar}</div>
         <div><div style={{fontSize:12,fontWeight:600,color:"#f5f5f5"}}>{account.handle}</div><div style={{fontSize:10,color:"#8e8e8e"}}>{post.date}</div></div>
       </div>
-      <Media/>
+      {mediaBlock}
       <div style={{padding:"9px 12px"}}>
         <div style={{fontSize:12,fontWeight:600,color:"#f5f5f5",marginBottom:3}}>{numFmt(post.likes)} likes</div>
         <div style={{fontSize:12,color:"#f5f5f5"}}><b>{account.handle}</b> {post.content.slice(0,200)}</div>
@@ -225,13 +227,13 @@ function PostCard({ post, account, platform }) {
         <div><div style={{fontSize:13,fontWeight:600,color:"#e4e6eb"}}>{account.name}</div><div style={{fontSize:11,color:"#b0b3b8"}}>{post.date} · 🌐</div></div>
       </div>
       <div style={{fontSize:13,color:"#e4e6eb",lineHeight:1.55,marginBottom:post.mediaUrl?9:0}}>{post.content.slice(0,280)}</div>
-      <Media/>
+      {mediaBlock}
       <div style={{borderTop:"1px solid #3a3b3c",marginTop:10,paddingTop:9,display:"flex",gap:16,color:"#b0b3b8",fontSize:12}}><span>👍{numFmt(post.likes)}</span><span>💬{numFmt(post.comments)}</span><span>↗{numFmt(post.shares)}</span></div>
     </div>
   );
   if(pfKey==="tt") return(
     <div style={{...base,background:"#121212",border:"1px solid #2a2a2a"}}>
-      <Media/>
+      {mediaBlock}
       <div style={{padding:"9px 12px"}}>
         <div style={{fontSize:12,fontWeight:600,color:"#f5f5f5"}}>{account.handle}</div>
         <div style={{fontSize:12,color:"rgba(255,255,255,0.75)",marginTop:2,lineHeight:1.5}}>{post.content.slice(0,150)}</div>
@@ -241,7 +243,7 @@ function PostCard({ post, account, platform }) {
   );
   return(
     <div style={{...base,background:"#0f0f0f",border:"1px solid #272727"}}>
-      <Media/>
+      {mediaBlock}
       <div style={{padding:"10px 12px"}}>
         <div style={{fontSize:13,color:"#f1f1f1",fontWeight:500,lineHeight:1.4}}>{post.content.slice(0,200)}</div>
         <div style={{fontSize:11,color:"#aaa",marginTop:6}}>{account.handle} · {post.date} · 👍{numFmt(post.likes)}</div>
