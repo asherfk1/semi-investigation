@@ -54,7 +54,8 @@ export default function Investigation() {
   });
 
   const validatedIds = Object.keys(validated).filter(id=>validated[id]);
-  const canReport    = validatedIds.length >= 3;
+  const minToReport  = 3;
+  const canReport    = validatedIds.length >= minToReport;
   const getV = id => editViol[id] ?? aiResults[id]?.violations ?? [];
   const getP = id => editPeca[id] ?? aiResults[id]?.peca ?? [];
   const toggleV = (id,v) => { const c=getV(id); setEditViol(e=>({...e,[id]:c.includes(v)?c.filter(x=>x!==v):[...c,v]})); };
@@ -312,17 +313,22 @@ export default function Investigation() {
           </div>
           <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
             <div style={{background:"#f0f0f0",borderRadius:7,padding:"5px 10px",fontSize:11,display:"flex",gap:8}}>
-              <span style={{color:"#1D9E75"}}>✓ {validatedIds.length}</span>
-              <span style={{color:"#E24B4A"}}>✗ {Object.values(rejected).filter(Boolean).length}</span>
-              <span style={{color:"#A32D2D"}}>⚑ {posts.filter(p=>(aiResults[p.id]?.violations?.length||0)>0).length}</span>
+              <span style={{color:"#1D9E75"}}>✓ {validatedIds.length} validated</span>
+              <span style={{color:"#E24B4A"}}>✗ {Object.values(rejected).filter(Boolean).length} rejected</span>
+              <span style={{color:"#A32D2D"}}>⚑ {posts.filter(p=>(aiResults[p.id]?.violations?.length||0)>0).length} flagged</span>
             </div>
             <button onClick={()=>setInvStep("idle")} style={btn("#f0f0f0","#333","1px solid #ccc")}>← New scan</button>
             {canReport
-              ? <button onClick={exportReport} style={btn("#1D9E75","#fff")}>⬇ Export report</button>
-              : <button disabled style={{...btn("#ccc","#999"),opacity:.6}}>Validate {3-validatedIds.length} more</button>
+              ? <button onClick={exportReport} style={{...btn("#1D9E75","#fff"),fontWeight:600,padding:"7px 16px"}}>⬇ Generate &amp; export report ({validatedIds.length})</button>
+              : <div style={{background:"#FAEEDA",border:"1px solid #EF9F27",borderRadius:7,padding:"6px 12px",fontSize:11,color:"#633806"}}>
+                  Validate <b>{3-validatedIds.length}</b> more post{3-validatedIds.length!==1?"s":""} to generate report
+                </div>
             }
           </div>
         </div>
+        {canReport&&<div style={{marginTop:10,padding:"8px 12px",background:"#EAF3DE",border:"1px solid #C0DD97",borderRadius:7,fontSize:11,color:"#3B6D11"}}>
+          ✓ <b>{validatedIds.length} posts validated</b> — click "Generate &amp; export report" above to create the PTA block request report as a downloadable HTML file you can print or save as PDF.
+        </div>}
       </div>
 
       <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
