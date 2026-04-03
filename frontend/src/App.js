@@ -1,895 +1,169 @@
 import { useState } from "react";
-import BillingDashboard, { recordBillingEntry } from "./Billing";
+import { AuthProvider, useAuth } from "./AuthContext";
+import Login      from "./pages/Login";
+import Dashboard  from "./pages/Dashboard";
+import NewCase    from "./pages/NewCase";
+import PTASubmit  from "./pages/PTASubmit";
+import CaseReports from "./pages/CaseReports";
+import Investigation from "./pages/Investigation";
+import InvReports  from "./pages/InvReports";
+import Billing     from "./pages/Billing";
+import InvSettings from "./pages/InvSettings";
+import Users       from "./pages/Users";
+import PlatformSettings from "./pages/PlatformSettings";
 
-const BACKEND = "https://semi-investigation.onrender.com";
+const NAV = [
+  { section:"Main" },
+  { id:"dashboard", label:"Dashboard", icon:"M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" },
+  { section:"Cases" },
+  { id:"cases", label:"Complaint management", icon:"M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z", noClick:true,
+    subs:[
+      { id:"newcase",      label:"+ New case" },
+      { id:"pta",          label:"PTA submission" },
+      { id:"casereports",  label:"Reports" },
+    ]
+  },
+  { section:"Investigation" },
+  { id:"investigation", label:"Investigation", icon:"M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z",
+    subs:[
+      { id:"startinv",   label:"Start investigation" },
+      { id:"invreports", label:"Reports" },
+      { id:"billing",    label:"Billing" },
+      { id:"invsettings",label:"Settings" },
+    ]
+  },
+  { section:"Admin" },
+  { id:"users",    label:"User management",   icon:"M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" },
+  { id:"settings", label:"Platform settings", icon:"M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43.17-0.47.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02.64.07.94l-2.03,1.58c-0.18.14-0.23.41-0.12.61l1.92,3.32c0.12.22.37.29.59.22l2.39-0.96c0.5.38,1.03.7,1.62.94l0.36,2.54c0.05.24.24.41.48.41h3.84c0.24,0,.44-0.17.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39.96c0.22.08.47,0,.59-0.22l1.92-3.32c0.12-0.22.07-0.47-0.12-0.61L19.14,12.94zM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" },
+];
 
-const PECA_LAWS = [
-  { id:"P9",   label:"PECA S.9 – Hate speech / incitement" },
-  { id:"P10",  label:"PECA S.10 – Cyberterrorism" },
-  { id:"P11",  label:"PECA S.11 – Electronic forgery" },
-  { id:"P20",  label:"PECA S.20 – Offences against dignity" },
-  { id:"P21",  label:"PECA S.21 – Offences against modesty" },
-  { id:"P26A", label:"PECA S.26A – Fake / false information" },
-];
-const COMMUNITY_VIOLATIONS = [
-  "Violence / incitement to violence","Terrorist / extremist content",
-  "Hate speech (religion, ethnicity, gender)","Weapons / firearms glorification",
-  "Banned organisation promotion","Anti-state / seditious content",
-  "Harassment / cyberbullying","Explicit / adult content","Misinformation / fake news",
-];
-const APIFY_ACTORS = {
-  "X (Twitter)": { id:"61RPP7dywgiy0JPD0" },
-  Instagram:     { id:"shu8hvrXbJbY3Eb9W" },
-  Facebook:      { id:"apify~facebook-posts-scraper" },
-  TikTok:        { id:"OtzYfK1ndEGdwWFKQ" },
-  YouTube:       { id:"h7LD7yIg3aaQ3gHDS" },
+const PAGE_COMPONENTS = {
+  dashboard:   Dashboard,
+  newcase:     NewCase,
+  pta:         PTASubmit,
+  casereports: CaseReports,
+  startinv:    Investigation,
+  invreports:  InvReports,
+  billing:     Billing,
+  invsettings: InvSettings,
+  users:       Users,
+  settings:    PlatformSettings,
 };
-const SEV_COLOR = { critical:"#A32D2D", high:"#854F0B", medium:"#185FA5", low:"#3B6D11" };
-const SEV_BG    = { critical:"#FCEBEB", high:"#FAEEDA", medium:"#E6F1FB", low:"#EAF3DE" };
-const SETTINGS_KEY = "smiu_settings_v2";
 
-const loadCfg = () => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}"); } catch { return {}; } };
-const saveCfg = s => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} };
-const numFmt  = n => n>=1000?(n/1000).toFixed(1)+"K":String(n||0);
+const PAGE_TITLES = {
+  dashboard:"Dashboard", newcase:"Complaint management — new case",
+  pta:"Complaint management — PTA submission", casereports:"Complaint management — reports",
+  startinv:"Investigation — start investigation", invreports:"Investigation — reports",
+  billing:"Investigation — billing", invsettings:"Investigation — settings",
+  users:"User management", settings:"Platform settings",
+};
 
-function detectPlatform(url) {
-  const u = (url||"").toLowerCase();
-  if (u.includes("twitter.com")||u.includes("x.com")) return "X (Twitter)";
-  if (u.includes("instagram.com")) return "Instagram";
-  if (u.includes("facebook.com")||u.includes("fb.com")) return "Facebook";
-  if (u.includes("tiktok.com")) return "TikTok";
-  if (u.includes("youtube.com")||u.includes("youtu.be")) return "YouTube";
-  return null;
-}
-function extractHandle(url, platform) {
-  try {
-    const u = new URL(url.startsWith("http")?url:"https://"+url);
-    const parts = u.pathname.split("/").filter(Boolean);
-    const h = parts[parts.length-1]||parts[0]||url;
-    return ["X (Twitter)","TikTok","Instagram"].includes(platform)?(h.startsWith("@")?h:"@"+h):h;
-  } catch { return url; }
-}
-function formatDate(raw) {
-  if (!raw) return "Unknown date";
-  try {
-    const d = new Date(typeof raw==="number"?raw*1000:raw);
-    if (isNaN(d)) return String(raw).slice(0,20);
-    return d.toLocaleDateString("en-PK",{day:"2-digit",month:"short",year:"numeric"})+" · "+d.toLocaleTimeString("en-PK",{hour:"2-digit",minute:"2-digit"});
-  } catch { return String(raw).slice(0,20); }
-}
-function platformColor(pf) {
-  return {"X (Twitter)":"#1DA1F2",Instagram:"#E1306C",Facebook:"#1877F2",TikTok:"#ff0050",YouTube:"#FF0000"}[pf]||"#555";
-}
+function Shell() {
+  const { user, logout, loading } = useAuth();
+  const [page, setPage]         = useState("dashboard");
+  const [miniNav, setMiniNav]   = useState(false);
 
-// ── Backend API calls ─────────────────────────────────────────────────────
-async function apiVerify(token) {
-  const r = await fetch(`${BACKEND}/api/apify/verify?token=${token.trim()}`);
-  return r.json();
-}
-async function apiStartRun(actorId, input, token) {
-  const r = await fetch(`${BACKEND}/api/apify/run/${actorId}`, {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({token:token.trim(), input}),
-  });
-  if (!r.ok) { const t=await r.text(); throw new Error(`Run start failed (${r.status}): ${t.slice(0,200)}`); }
-  return r.json();
-}
-async function apiPollStatus(runId, token) {
-  const r = await fetch(`${BACKEND}/api/apify/run/${runId}/status?token=${token.trim()}`);
-  return r.json();
-}
-async function apiGetItems(runId, token, limit) {
-  const r = await fetch(`${BACKEND}/api/apify/run/${runId}/items?token=${token.trim()}&limit=${limit}`);
-  if (!r.ok) { const t=await r.text(); throw new Error(`Items fetch failed (${r.status}): ${t.slice(0,200)}`); }
-  return r.json();
-}
-async function apiAnalyse(post, account, platform, cfg) {
-  const r = await fetch(`${BACKEND}/api/analyse`, {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({post, account, platform, claudeKey:cfg.claudeKey, claudeModel:cfg.claudeModel}),
-  });
-  if (!r.ok) { const t=await r.text(); throw new Error(`Analyse failed (${r.status}): ${t.slice(0,200)}`); }
-  return r.json();
-}
+  if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f0f2f5"}}><div style={{fontSize:14,color:"#888"}}>Loading…</div></div>;
+  if (!user)   return <Login/>;
 
-// ── Fetch posts via Apify ─────────────────────────────────────────────────
-async function fetchPosts(profileUrl, platform, postCount, token) {
-  const actor = APIFY_ACTORS[platform];
-  if (!actor) throw new Error("No actor for "+platform);
-  const inputs = {
-    "X (Twitter)": {startUrls:[{url:profileUrl}],maxItems:postCount,addUserInfo:true},
-    Instagram:     {directUrls:[profileUrl],resultsLimit:postCount,resultsType:"posts"},
-    Facebook: {
-      startUrls:          [{ url: profileUrl }],
-      resultsLimit:       postCount,
-      maxPosts:           postCount,
-      maxPostComments:    0,
-      maxReviews:         0,
-      scrapeAbout:        false,
-      scrapeReviews:      false,
-      scrapeServices:     false,
-      scrapePostsUntilDate: "",
-    },
-    TikTok:        {profiles:[profileUrl],resultsPerPage:postCount,maxItems:postCount},
-    YouTube:       {startUrls:[{url:profileUrl}],maxResults:postCount,maxVideos:postCount},
-  };
-  const runData = await apiStartRun(actor.id, inputs[platform]||{startUrls:[{url:profileUrl}]}, token);
-  const runId   = runData?.data?.id;
-  if (!runId) throw new Error("No run ID: "+JSON.stringify(runData).slice(0,150));
+  const PageComponent = PAGE_COMPONENTS[page] || Dashboard;
 
-  const deadline = Date.now()+180000;
-  let status = "RUNNING";
-  while (Date.now()<deadline) {
-    await new Promise(r=>setTimeout(r,5000));
-    const sd = await apiPollStatus(runId, token);
-    status = sd?.data?.status||"RUNNING";
-    if (status==="SUCCEEDED") break;
-    if (["FAILED","ABORTED","TIMED-OUT"].includes(status)) throw new Error("Apify run "+status);
-  }
-  if (status!=="SUCCEEDED") throw new Error("Apify timed out");
+  const initials = user.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 
-  const items = await apiGetItems(runId, token, postCount);
-  if (!Array.isArray(items)||items.length===0) throw new Error("No posts returned — profile may be private");
-
-  return items.slice(0,postCount).map((item,i)=>{
-    let content="",date="",likes=0,shares=0,comments=0,type="text",mediaUrl=null,url=profileUrl;
-    if (platform==="X (Twitter)") {
-      content=item.full_text||item.text||item.tweetText||"";
-      date=item.created_at||item.createdAt||"";
-      likes=item.favorite_count||item.likeCount||0;
-      shares=item.retweet_count||item.retweetCount||0;
-      comments=item.reply_count||item.replyCount||0;
-      type=item.extendedEntities?.media?.[0]?.type==="video"?"video":item.entities?.media?.length?"image":"text";
-      mediaUrl=item.extendedEntities?.media?.[0]?.media_url_https||item.entities?.media?.[0]?.media_url_https||null;
-      url=item.url||item.tweetUrl||`https://x.com/i/web/status/${item.id_str||i}`;
-    } else if (platform==="Instagram") {
-      content=item.caption||item.text||"";
-      date=item.timestamp||item.taken_at_timestamp||"";
-      likes=item.likesCount||item.likes_count||0;
-      comments=item.commentsCount||item.comments_count||0;
-      type=item.type==="Video"||item.isVideo?"video":item.displayUrl?"image":"text";
-      mediaUrl=item.displayUrl||item.thumbnailUrl||null;
-      url=item.url||(item.shortCode?`https://instagram.com/p/${item.shortCode}`:profileUrl);
-    } else if (platform==="Facebook") {
-      const mediaItems = item.media||[];
-      const rawText    = item.text||item.message||item.story||item.title||item.description||item.caption||"";
-
-      // Extract OCR text from all media items (Facebook reads text in images)
-      const ocrTexts = mediaItems
-        .map(m => m.ocrText||"")
-        .filter(t => t && !t.startsWith("May be an image"))
-        .join(" ");
-
-      content = rawText.trim() ||
-        (mediaItems.length>1 ? `[Album — ${mediaItems.length} images, no caption]` :
-         mediaItems.some(m=>m.__typename==="Video") ? "[Video post — no caption]" :
-         mediaItems.length>0 ? "[Image post — no caption]" : "[Post with no text]");
-
-      // Append OCR text if meaningful
-      if (ocrTexts) content += `\n\nText in image (OCR): ${ocrTexts}`;
-
-      date     = item.time||item.timestamp||"";
-      likes    = typeof item.likes==="number" ? item.likes : item.reactionLikeCount||0;
-      shares   = typeof item.shares==="number" ? item.shares : 0;
-      comments = typeof item.comments==="number" ? item.comments : 0;
-      type     = mediaItems.some(m=>m.__typename==="Video"||m.__typename==="VideoStory") ? "video"
-               : mediaItems.length>0 ? "image" : "text";
-
-      // Find first media item that actually has an image URL
-      // Post 3 shows album cover as media[0] with no image — skip those, find real image
-      const findImgUrl = m =>
-        m?.photo_image?.uri || m?.photo_image?.src ||
-        m?.image?.uri       || m?.image?.src       ||
-        m?.thumbnail        || null;
-
-      // Try all media items until we find one with a real image URL
-      const realMedia = mediaItems.find(m => findImgUrl(m) !== null);
-      mediaUrl = findImgUrl(realMedia) || item.full_picture || item.picture || null;
-
-      // For albums store all image URLs as comma-separated for report
-      const allImgUrls = mediaItems.map(m => findImgUrl(m)).filter(Boolean);
-
-      // Store extra images for display
-      if (allImgUrls.length > 1) item._extraImages = allImgUrls.slice(1, 4);
-      url = item.url||item.facebookUrl||item.topLevelUrl||item.postUrl||profileUrl;
-    } else if (platform==="TikTok") {
-      content=item.text||item.desc||"";
-      date=item.createTime||item.createTimeISO||"";
-      likes=item.diggCount||item.stats?.diggCount||0;
-      shares=item.shareCount||0;
-      comments=item.commentCount||0;
-      type="video";
-      mediaUrl=item.covers?.[0]||item.video?.cover||null;
-      url=item.webVideoUrl||`https://tiktok.com/@${item.authorMeta?.name||"user"}/video/${item.id||i}`;
-    } else if (platform==="YouTube") {
-      content=(item.title||"")+(item.description?" — "+item.description.slice(0,200):"");
-      date=item.uploadedAt||item.date||"";
-      likes=item.likes||item.likeCount||0;
-      comments=item.commentsCount||item.commentCount||0;
-      type="video";
-      mediaUrl=item.thumbnailUrl||item.thumbnail||null;
-      url=item.url||`https://youtube.com/watch?v=${item.id||i}`;
-    }
-    return {id:i+1,content:content||"(no text)",date:formatDate(date),likes,shares,comments,type,mediaUrl,url,extraImages:item._extraImages||[]};
-  });
-}
-
-// ── Post card ─────────────────────────────────────────────────────────────
-function PostCard({ post, account, platform }) {
-  const [imgErr, setImgErr] = useState(false);
-  const bg  = platformColor(platform);
-  const pfKey = {"X (Twitter)":"tw",Instagram:"ig",Facebook:"fb",TikTok:"tt",YouTube:"yt"}[platform]||"tw";
-  const proxied = post.mediaUrl ? `${BACKEND}/api/image-proxy?url=${encodeURIComponent(post.mediaUrl)}` : null;
-
-  const media = !proxied ? null : imgErr ? (
-    <div style={{width:"100%",height:90,background:"#1a1a1a",borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <span style={{fontSize:11,color:"#555"}}>{post.type==="video"?"▶ Video":"🖼 Image"} — preview unavailable</span>
-    </div>
-  ) : (
-    <div>
-      <div style={{width:"100%",height:160,background:"#111",borderRadius:4,overflow:"hidden",position:"relative"}}>
-        <img src={proxied} alt="media" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={()=>setImgErr(true)}/>
-        {post.type==="video"&&(
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.4)"}}>
-            <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid rgba(255,255,255,0.6)"}}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><polygon points="4,2 13,8 4,14"/></svg>
-            </div>
-          </div>
-        )}
-      </div>
-      {post.extraImages?.length>0&&(
-        <div style={{display:"flex",gap:4,marginTop:4}}>
-          {post.extraImages.map((imgUrl,i)=>(
-            <div key={i} style={{flex:1,height:70,background:"#111",borderRadius:4,overflow:"hidden"}}>
-              <img
-                src={`${BACKEND}/api/image-proxy?url=${encodeURIComponent(imgUrl)}`}
-                alt={`media ${i+2}`}
-                style={{width:"100%",height:"100%",objectFit:"cover"}}
-                onError={e=>e.target.style.display="none"}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const base={fontFamily:"sans-serif",width:"100%",boxSizing:"border-box",borderRadius:8,overflow:"hidden"};
-  if (pfKey==="tw") return (
-    <div style={{...base,background:"#000",border:"1px solid #2f3336",padding:"12px 14px"}}>
-      <div style={{display:"flex",gap:9,marginBottom:8}}>
-        <div style={{width:36,height:36,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",flexShrink:0}}>{account.avatar}</div>
-        <div><div style={{fontSize:13,fontWeight:700,color:"#e7e9ea"}}>{account.name}</div><div style={{fontSize:11,color:"#71767b"}}>{account.handle} · {post.date}</div></div>
-      </div>
-      <div style={{fontSize:13,color:"#e7e9ea",lineHeight:1.55,marginBottom:proxied?8:0}}>{post.content.slice(0,280)}</div>
-      {media}
-      <div style={{display:"flex",gap:18,marginTop:9,color:"#71767b",fontSize:12}}><span>💬{numFmt(post.comments)}</span><span>🔁{numFmt(post.shares)}</span><span>❤️{numFmt(post.likes)}</span></div>
-    </div>
-  );
-  if (pfKey==="ig") return (
-    <div style={{...base,background:"#000",border:"1px solid #262626"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px"}}>
-        <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(45deg,#f09433,${bg})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{account.avatar}</div>
-        <div><div style={{fontSize:12,fontWeight:600,color:"#f5f5f5"}}>{account.handle}</div><div style={{fontSize:10,color:"#8e8e8e"}}>{post.date}</div></div>
-      </div>
-      {media}
-      <div style={{padding:"9px 12px"}}>
-        <div style={{fontSize:12,fontWeight:600,color:"#f5f5f5",marginBottom:3}}>{numFmt(post.likes)} likes</div>
-        <div style={{fontSize:12,color:"#f5f5f5"}}><b>{account.handle}</b> {post.content.slice(0,200)}</div>
-      </div>
-    </div>
-  );
-  if (pfKey==="fb") return (
-    <div style={{...base,background:"#242526",border:"1px solid #3a3b3c",padding:"12px 14px"}}>
-      <div style={{display:"flex",gap:8,marginBottom:9}}>
-        <div style={{width:34,height:34,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{account.avatar}</div>
-        <div><div style={{fontSize:13,fontWeight:600,color:"#e4e6eb"}}>{account.name}</div><div style={{fontSize:11,color:"#b0b3b8"}}>{post.date} · 🌐</div></div>
-      </div>
-      <div style={{fontSize:13,color:"#e4e6eb",lineHeight:1.55,marginBottom:proxied?9:0}}>{post.content.slice(0,280)}</div>
-      {media}
-      <div style={{borderTop:"1px solid #3a3b3c",marginTop:10,paddingTop:9,display:"flex",gap:16,color:"#b0b3b8",fontSize:12}}><span>👍{numFmt(post.likes)}</span><span>💬{numFmt(post.comments)}</span><span>↗{numFmt(post.shares)}</span></div>
-    </div>
-  );
-  if (pfKey==="tt") return (
-    <div style={{...base,background:"#121212",border:"1px solid #2a2a2a"}}>
-      {media}
-      <div style={{padding:"9px 12px"}}>
-        <div style={{fontSize:12,fontWeight:600,color:"#f5f5f5"}}>{account.handle}</div>
-        <div style={{fontSize:12,color:"rgba(255,255,255,0.75)",marginTop:2,lineHeight:1.5}}>{post.content.slice(0,150)}</div>
-        <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginTop:4}}>❤️{numFmt(post.likes)} 💬{numFmt(post.comments)} · {post.date}</div>
-      </div>
-    </div>
-  );
-  return (
-    <div style={{...base,background:"#0f0f0f",border:"1px solid #272727"}}>
-      {media}
-      <div style={{padding:"10px 12px"}}>
-        <div style={{fontSize:13,color:"#f1f1f1",fontWeight:500,lineHeight:1.4}}>{post.content.slice(0,200)}</div>
-        <div style={{fontSize:11,color:"#aaa",marginTop:6}}>{account.handle} · {post.date} · 👍{numFmt(post.likes)}</div>
-      </div>
-    </div>
-  );
-}
-
-// ── Settings ──────────────────────────────────────────────────────────────
-function Settings({ onClose }) {
-  const [cfg, setCfg]     = useState(loadCfg);
-  const [saved, setSaved] = useState(false);
-  const [testResult, setTestResult] = useState(null);
-
-  const save = () => { saveCfg(cfg); setSaved(true); setTimeout(()=>setSaved(false),2000); };
-
-  const testConnection = async () => {
-    setTestResult("testing");
-    try {
-      const token = (cfg.apifyToken||"").trim();
-      if (!token) { setTestResult("err:Token is empty"); return; }
-      if (!token.startsWith("apify_api_")) { setTestResult("err:Token should start with apify_api_"); return; }
-      const data = await apiVerify(token);
-      if (data?.data?.username) setTestResult("ok:"+data.data.username);
-      else if (data?.error) setTestResult("err:"+data.error);
-      else setTestResult("err:"+JSON.stringify(data).slice(0,80));
-    } catch(e) { setTestResult("err:"+e.message); }
-  };
-
-  const inp = {width:"100%",boxSizing:"border-box",padding:"8px 10px",borderRadius:8,border:"1px solid #ccc",fontSize:13,background:"#fff",color:"#111"};
-  const lbl = {fontSize:12,color:"#444",marginBottom:4,display:"block",fontWeight:500};
-  const sec = {fontSize:11,fontWeight:700,color:"#333",textTransform:"uppercase",letterSpacing:1,marginBottom:10,paddingBottom:6,borderBottom:"2px solid #e0e0e0",marginTop:4};
+  const roleColors = { superadmin:"#185FA5", teamlead:"#854F0B", analyst:"#3B6D11", viewer:"#888" };
+  const roleLabels = { superadmin:"Super admin", teamlead:"Team lead", analyst:"Analyst", viewer:"Viewer" };
 
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"flex-end"}}>
-      <div style={{width:460,height:"100vh",background:"#fff",borderLeft:"2px solid #ccc",overflowY:"auto",padding:"1.5rem",boxShadow:"-6px 0 32px rgba(0,0,0,0.2)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <div style={{fontSize:17,fontWeight:700,color:"#111"}}>⚙ Configuration</div>
-          <button onClick={onClose} style={{background:"#eee",border:"1px solid #ccc",borderRadius:6,cursor:"pointer",fontSize:16,color:"#333",width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-        </div>
-
-        <div style={{marginBottom:22}}>
-          <div style={sec}>Apify — social media scraper</div>
-          <div style={{marginBottom:10}}>
-            <span style={lbl}>Apify API token *</span>
-            <input style={{...inp,fontFamily:"monospace"}} type="password" placeholder="apify_api_xxxxxxxxxxxx" value={cfg.apifyToken||""} onChange={e=>setCfg(c=>({...c,apifyToken:e.target.value}))}/>
-            <div style={{fontSize:11,color:"#888",marginTop:4}}>apify.com → Settings → Integrations → API tokens</div>
-          </div>
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            <button onClick={testConnection} style={{background:"#f0f0f0",border:"1px solid #ccc",borderRadius:6,padding:"6px 12px",fontSize:12,cursor:"pointer",color:"#333",fontWeight:500}}>Test connection</button>
-            {testResult==="testing"&&<span style={{fontSize:12,color:"#666"}}>Testing…</span>}
-            {testResult?.startsWith("ok:")&&<span style={{fontSize:12,color:"#2d7a2d",fontWeight:500}}>✓ Connected as {testResult.slice(3)}</span>}
-            {testResult?.startsWith("err:")&&<span style={{fontSize:12,color:"#a32d2d",background:"#fcebeb",padding:"3px 8px",borderRadius:4}}>{testResult.slice(4)}</span>}
-          </div>
-        </div>
-
-        <div style={{marginBottom:22}}>
-          <div style={sec}>Apify actor IDs</div>
-          {Object.entries(APIFY_ACTORS).map(([pf,actor])=>(
-            <div key={pf} style={{marginBottom:8}}>
-              <span style={lbl}>{pf}</span>
-              <input style={{...inp,fontFamily:"monospace",fontSize:12}} placeholder={actor.id} value={cfg["actor_"+pf]||""} onChange={e=>setCfg(c=>({...c,["actor_"+pf]:e.target.value}))}/>
-              <div style={{fontSize:10,color:"#999",marginTop:2}}>Default: {actor.id}</div>
+    <div style={{display:"flex",height:"100vh",background:"#f0f2f5",overflow:"hidden"}}>
+      {/* Sidebar */}
+      {!miniNav && (
+        <div style={{width:220,background:"#0c2340",display:"flex",flexDirection:"column",flexShrink:0,overflowY:"auto"}}>
+          {/* Logo */}
+          <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+            <div style={{width:30,height:30,background:"#185FA5",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
             </div>
-          ))}
-        </div>
-
-        <div style={{marginBottom:22}}>
-          <div style={sec}>Claude AI</div>
-          <div style={{background:"#eaf3de",border:"1px solid #b0d080",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#3a6010",marginBottom:10}}>
-            Set CLAUDE_API_KEY as environment variable on Render.com backend service.
+            <div><div style={{color:"#fff",fontSize:14,fontWeight:600}}>SMIU</div><div style={{color:"rgba(255,255,255,0.4)",fontSize:9}}>Investigation Platform</div></div>
           </div>
-          <div style={{marginBottom:10}}>
-            <span style={lbl}>Claude API key (optional override)</span>
-            <input style={{...inp,fontFamily:"monospace"}} type="password" placeholder="sk-ant-api03-…" value={cfg.claudeKey||""} onChange={e=>setCfg(c=>({...c,claudeKey:e.target.value}))}/>
-          </div>
-          <div>
-            <span style={lbl}>Model</span>
-            <select style={inp} value={cfg.claudeModel||"claude-sonnet-4-20250514"} onChange={e=>setCfg(c=>({...c,claudeModel:e.target.value}))}>
-              <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (recommended)</option>
-              <option value="claude-opus-4-20250514">Claude Opus 4 (most capable)</option>
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (fastest)</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={{marginBottom:22}}>
-          <div style={sec}>Investigation unit defaults</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            <div><span style={lbl}>Unit name</span><input style={inp} placeholder="FIA Cybercrime Wing" value={cfg.unitName||""} onChange={e=>setCfg(c=>({...c,unitName:e.target.value}))}/></div>
-            <div><span style={lbl}>City / office</span><input style={inp} placeholder="Islamabad" value={cfg.unitCity||""} onChange={e=>setCfg(c=>({...c,unitCity:e.target.value}))}/></div>
-          </div>
-          <div><span style={lbl}>Report footer</span><input style={inp} placeholder="CONFIDENTIAL — FOR OFFICIAL USE ONLY" value={cfg.reportFooter||""} onChange={e=>setCfg(c=>({...c,reportFooter:e.target.value}))}/></div>
-        </div>
-
-        <div style={{marginBottom:24}}>
-          <div style={sec}>Thresholds</div>
-          <div style={{marginBottom:10}}>
-            <span style={lbl}>Min confidence to flag: <b>{cfg.minConfidence||70}%</b></span>
-            <input type="range" min={50} max={95} step={5} value={cfg.minConfidence||70} onChange={e=>setCfg(c=>({...c,minConfidence:+e.target.value}))} style={{width:"100%"}}/>
-          </div>
-          <div>
-            <span style={lbl}>Min validated posts before report</span>
-            <select style={inp} value={cfg.minValidated||3} onChange={e=>setCfg(c=>({...c,minValidated:+e.target.value}))}>
-              {[1,2,3,5].map(n=><option key={n} value={n}>{n} post{n>1?"s":""}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={save} style={{flex:1,background:"#185FA5",color:"#fff",border:"none",borderRadius:8,padding:"10px",fontSize:14,fontWeight:600,cursor:"pointer"}}>{saved?"✓ Saved":"Save settings"}</button>
-          <button onClick={onClose} style={{background:"#eee",color:"#333",border:"1px solid #ccc",borderRadius:8,padding:"10px 16px",fontSize:13,cursor:"pointer"}}>Close</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main App ──────────────────────────────────────────────────────────────
-export default function App() {
-  const [step, setStep]             = useState("input");
-  const [showSettings, setShowSettings] = useState(false);
-  const [showBilling, setShowBilling]   = useState(false);
-  const [cfg, setCfg]               = useState(loadCfg);
-  const [profileUrl, setProfileUrl] = useState("");
-  const [detectedPf, setDetectedPf] = useState(null);
-  const [postCount, setPostCount]   = useState(10);
-  const [analystName, setAnalystName]   = useState("");
-  const [analystBadge, setAnalystBadge] = useState("");
-  const [department, setDepartment]     = useState("");
-  const [account, setAccount]   = useState(null);
-  const [posts, setPosts]       = useState([]);
-  const [aiResults, setAiResults] = useState({});
-  const [progress, setProgress]   = useState({current:0,total:0,phase:"",msg:""});
-  const [fetchError, setFetchError] = useState(null);
-  const [validated, setValidated] = useState({});
-  const [rejected,  setRejected]  = useState({});
-  const [editViol, setEditViol]   = useState({});
-  const [editPeca, setEditPeca]   = useState({});
-  const [expanded, setExpanded]   = useState(null);
-  const [analystNote, setAnalystNote] = useState({});
-  const [filter, setFilter]       = useState("all");
-  const [caseRef]                 = useState("SMIU-"+new Date().getFullYear()+"-"+Math.floor(10000+Math.random()*90000));
-
-  const reportDate   = new Date().toLocaleDateString("en-PK",{day:"2-digit",month:"long",year:"numeric"});
-  const reloadCfg    = () => setCfg(loadCfg());
-  const minVal       = cfg.minValidated||3;
-  const validatedIds = Object.keys(validated).filter(id=>validated[id]);
-  const canReport    = validatedIds.length>=minVal;
-  const apifyReady   = !!(cfg.apifyToken||"").trim();
-
-  const getV = id => editViol[id]??aiResults[id]?.violations??[];
-  const getP = id => editPeca[id]??aiResults[id]?.peca??[];
-  const toggleV = (id,v) => { const c=getV(id); setEditViol(e=>({...e,[id]:c.includes(v)?c.filter(x=>x!==v):[...c,v]})); };
-  const toggleP = (id,p) => { const c=getP(id); setEditPeca(e=>({...e,[id]:c.includes(p)?c.filter(x=>x!==p):[...c,p]})); };
-  const doValidate = id => { setValidated(v=>({...v,[id]:!v[id]})); setRejected(r=>({...r,[id]:false})); };
-  const doReject   = id => { setRejected(r=>({...r,[id]:!r[id]})); setValidated(v=>({...v,[id]:false})); };
-
-  const filteredPosts = posts.filter(p=>{
-    if(filter==="flagged")   return (aiResults[p.id]?.violations?.length||0)>0&&!rejected[p.id];
-    if(filter==="validated") return validated[p.id];
-    if(filter==="rejected")  return rejected[p.id];
-    return true;
-  });
-
-  async function startAnalysis() {
-    const c = loadCfg();
-    const token = (c.apifyToken||"").trim();
-    if (!token) { setFetchError("Apify token not configured. Open Settings."); return; }
-    setFetchError(null);
-    const pf     = detectedPf;
-    const handle = extractHandle(profileUrl, pf);
-    const name   = handle.replace(/^@/,"").replace(/[._-]/g," ").split(" ").map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
-    const acct   = {name,handle,platform:pf,url:profileUrl,followers:"—",avatar:name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()};
-    setAccount(acct); setPosts([]); setAiResults({});
-    setValidated({}); setRejected({}); setEditViol({}); setEditPeca({});
-    setStep("loading");
-    setProgress({current:0,total:0,phase:"fetch",msg:"Connecting to Apify…"});
-    let fetched = [];
-    try {
-      setProgress({current:0,total:0,phase:"fetch",msg:`Fetching posts from ${pf}…`});
-      fetched = await fetchPosts(profileUrl, pf, postCount, token);
-      setPosts(fetched);
-    } catch(e) { setFetchError("Apify error: "+e.message); setStep("input"); return; }
-
-    const results = {};
-    for (let i=0; i<fetched.length; i++) {
-      const p = fetched[i];
-      setProgress({current:i+1,total:fetched.length,phase:"ai",msg:`Analysing post ${i+1} of ${fetched.length} with Claude AI…`});
-      try { results[p.id] = await apiAnalyse(p, acct, pf, c); }
-      catch(e) { results[p.id]={severity:"medium",confidence:70,violations:[],peca:[],summary:"Error: "+e.message,risk_level:"Unknown"}; }
-    }
-    setAiResults(results);
-    // Record billing entry
-    recordBillingEntry({
-      caseRef, analystName, platform:pf,
-      postCount, accountHandle:acct.handle, accountUrl:profileUrl,
-    });
-    setStep("review");
-  }
-
-  function exportReport() {
-    const vPosts = posts.filter(p=>validated[p.id]);
-    const allV   = [...new Set(vPosts.flatMap(p=>getV(p.id)))];
-    const allP   = [...new Set(vPosts.flatMap(p=>getP(p.id)))];
-    const pill   = (bg,c,t)=>`<span style="background:${bg};color:${c};font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;display:inline-block;margin-right:4px;margin-bottom:3px">${t}</span>`;
-    const overallSev = vPosts.some(p=>aiResults[p.id]?.severity==="critical")?"critical":"high";
-    const exhibits = vPosts.map((post,i)=>{
-      const ai=aiResults[post.id]||{},sev=ai.severity||"high";
-      return `<div style="border:1px solid #ddd;border-radius:8px;margin-bottom:20px;page-break-inside:avoid">
-        <div style="background:#f5f5f5;padding:8px 14px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between">
-          <b>Exhibit ${i+1} — ${post.type.toUpperCase()}</b>
-          <span style="font-size:11px;color:#666">Posted: ${post.date} | <span style="background:${SEV_BG[sev]};color:${SEV_COLOR[sev]};padding:2px 8px;border-radius:20px">${sev.toUpperCase()} · ${ai.confidence}%</span></span>
-        </div>
-        <div style="padding:14px">
-          <div style="font-size:13px;background:#fafafa;padding:10px;border-radius:6px;border-left:3px solid #185FA5;margin-bottom:8px;line-height:1.6">${post.content}</div>
-          <div style="font-size:12px;color:#185FA5;margin-bottom:6px">🔗 <a href="${post.url}">${post.url}</a></div>
-          <div style="font-size:12px;color:#555;margin-bottom:8px">❤️${numFmt(post.likes)} 💬${numFmt(post.comments)} ↗${numFmt(post.shares)}</div>
-          ${ai.summary?`<div style="font-size:13px;margin-bottom:8px"><b>AI summary:</b> ${ai.summary}</div>`:""}
-          ${ai.risk_level&&ai.risk_level!=="No significant risk identified"?`<div style="font-size:12px;color:#a32d2d;padding-left:8px;border-left:3px solid #e24b4a;margin-bottom:8px"><b>Risk:</b> ${ai.risk_level}</div>`:""}
-          <div style="margin-bottom:6px"><b style="font-size:11px;text-transform:uppercase;color:#555">Violations</b><br/>${getV(post.id).map(v=>pill("#FCEBEB","#A32D2D",v)).join("")||"None"}</div>
-          <div><b style="font-size:11px;text-transform:uppercase;color:#555">PECA</b><br/>${getP(post.id).map(p=>{const l=PECA_LAWS.find(x=>x.id===p);return pill("#E6F1FB","#185FA5",l?.label||p);}).join("")||"None"}</div>
-          ${analystNote[post.id]?`<div style="font-size:12px;background:#fffbe6;padding:7px 10px;border-radius:6px;border:1px solid #f0d060;margin-top:8px"><b>Analyst note:</b> ${analystNote[post.id]}</div>`:""}
-        </div></div>`;
-    }).join("");
-
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>SMIU ${caseRef}</title>
-<style>body{font-family:Arial,sans-serif;max-width:860px;margin:0 auto;padding:2rem;color:#111}.no-print{background:#185FA5;color:#fff;padding:10px 16px;border-radius:8px;margin-bottom:20px;display:flex;justify-content:space-between}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.mc{background:#f5f5f5;border-radius:6px;padding:7px 12px}.mc .k{font-size:11px;color:#777}.mc .v{font-size:13px;font-weight:600;word-break:break-all}@media print{.no-print{display:none}}</style>
-</head><body>
-<div class="no-print"><span><b>SMIU Report — ${caseRef}</b></span><button onclick="window.print()" style="background:#fff;color:#185FA5;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Print / Save PDF</button></div>
-<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:20px">
-  <div style="font-size:11px;letter-spacing:1.5px;color:#777;text-transform:uppercase">Islamic Republic of Pakistan</div>
-  <div style="font-size:20px;font-weight:700;margin-top:4px">Pakistan Telecommunication Authority</div>
-  <div style="font-size:13px;color:#555">Social Media Account Block Request</div>
-  <div style="font-size:11px;color:#777;margin-top:3px">Prevention of Electronic Crimes Act 2016</div>
-  <div style="margin-top:10px">${pill(SEV_BG[overallSev],SEV_COLOR[overallSev],"Severity: "+overallSev.toUpperCase())} ${pill("#E6F1FB","#185FA5","Case: "+caseRef)} ${pill("#EAF3DE","#3B6D11",account?.platform||"")}</div>
-</div>
-<div class="meta">${[["Case ref",caseRef],["Date",reportDate],["Analyst",analystName],["Badge",analystBadge||"—"],["Department",department||"—"],["Platform",account?.platform],["Account",account?.name],["Handle",account?.handle],["Profile URL",account?.url],["Followers",account?.followers],["Posts retrieved",posts.length],["Exhibits",vPosts.length]].map(([k,v])=>`<div class="mc"><div class="k">${k}</div><div class="v">${v||"—"}</div></div>`).join("")}</div>
-<div style="margin-bottom:12px"><b>Violations</b><br/>${allV.map(v=>pill("#FCEBEB","#A32D2D",v)).join("")||"None"}</div>
-<div style="margin-bottom:20px"><b>PECA provisions</b><br/>${allP.map(p=>{const l=PECA_LAWS.find(x=>x.id===p);return pill("#E6F1FB","#185FA5",l?.label||p);}).join("")||"None"}</div>
-<b>Evidence exhibits</b><div style="margin-top:12px">${exhibits}</div>
-<div style="background:#f5f5f5;border-radius:8px;padding:14px;margin-bottom:20px">
-  <b>Formal request to PTA</b>
-  <p style="font-size:13px;line-height:1.85;margin-top:8px">On the basis of ${vPosts.length} validated posts from <b>${account?.handle}</b> on <b>${account?.platform}</b>, this unit requests PTA to:</p>
-  <ol style="font-size:13px;line-height:2.1;margin-left:18px">
-    <li>Immediately suspend and permanently block account <b>${account?.handle}</b>;</li>
-    <li>Serve permanent takedown for exhibits ${vPosts.map((_,i)=>i+1).join(", ")};</li>
-    <li>Pursue legal action under <b>${allP.map(p=>PECA_LAWS.find(l=>l.id===p)?.label||p).join("; ")||"applicable PECA provisions"}</b>;</li>
-    <li>Provide confirmation to case <b>${caseRef}</b>.</li>
-  </ol>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;border-top:1px solid #ddd;padding-top:16px">
-  <div><div style="height:40px;border-bottom:1px solid #999;margin-bottom:6px"></div><b>${analystName}</b><div style="font-size:11px;color:#666">${analystBadge?"Badge: "+analystBadge+" · ":""}${department||""}</div><div style="font-size:11px;color:#666">Date: ${reportDate}</div></div>
-  <div><div style="height:40px;border-bottom:1px solid #999;margin-bottom:6px"></div><b>Authorising Officer</b><div style="font-size:11px;color:#666">Signature / Stamp</div></div>
-</div>
-<div style="margin-top:14px;text-align:center;font-size:11px;color:#aaa">${caseRef} · ${reportDate} · ${cfg.reportFooter||"SMIU — CONFIDENTIAL"}</div>
-</body></html>`;
-
-    const blob=new Blob([html],{type:"text/html"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download=`SMIU-${caseRef}-${(account?.handle||"report").replace(/[^a-z0-9]/gi,"_")}.html`;
-    a.click(); URL.revokeObjectURL(url);
-  }
-
-  const s = {
-    card:{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"1rem 1.25rem",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"},
-    btn: (bg,c,br)=>({background:bg,color:c,border:br||"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:500,cursor:"pointer"}),
-    lbl: {fontSize:12,color:"#555",marginBottom:4,display:"block",fontWeight:500},
-    inp: {width:"100%",boxSizing:"border-box",padding:"8px 10px",borderRadius:8,border:"1px solid #ccc",fontSize:13,background:"#fff",color:"#111"},
-    pill:(bg,c)=>({background:bg,color:c,fontSize:11,fontWeight:500,padding:"2px 8px",borderRadius:20,display:"inline-block",marginRight:4,marginBottom:3}),
-    sec: {fontSize:11,fontWeight:600,color:"#555",textTransform:"uppercase",letterSpacing:.8,marginBottom:8},
-  };
-
-  const TopBar = () => (
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 20px",background:"#185FA5",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,0.2)"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <div style={{width:32,height:32,background:"rgba(255,255,255,0.2)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
-        </div>
-        <div>
-          <span style={{fontSize:15,fontWeight:700,color:"#fff"}}>SMIU</span>
-          <span style={{fontSize:12,color:"rgba(255,255,255,0.75)",marginLeft:8}}>Social Media Investigation Unit · Pakistan</span>
-        </div>
-      </div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>setStep("input")} style={{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>🏠 Home</button>
-        {step==="report"&&<button onClick={exportReport} style={{background:"#fff",color:"#185FA5",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>⬇ Export</button>}
-        <button onClick={()=>setShowBilling(true)} style={{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>💰 Billing</button>
-        <button onClick={()=>{setShowSettings(true);reloadCfg();}} style={{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>⚙ Settings</button>
-      </div>
-    </div>
-  );
-
-  // ═══ INPUT ════════════════════════════════════════════════════════════════
-  if (step==="input") return (
-    <div style={{minHeight:"100vh",background:"#f4f6f9"}}>
-      <TopBar/>
-      {showSettings&&<Settings onClose={()=>{setShowSettings(false);reloadCfg();}}/>}
-      {showBilling&&<BillingDashboard onClose={()=>setShowBilling(false)}/>}
-      <div style={{maxWidth:580,margin:"0 auto",padding:"1.5rem 1rem"}}>
-        {!apifyReady&&<div style={{background:"#fff3cd",border:"1px solid #ffc107",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#664d03"}}>⚠ <b>Apify token not configured.</b> Open ⚙ Settings to add your token.</div>}
-        {fetchError&&<div style={{background:"#f8d7da",border:"1px solid #f5c6cb",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#721c24"}}><b>Error:</b> {fetchError}</div>}
-        {apifyReady&&<div style={{background:"#d4edda",border:"1px solid #c3e6cb",borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:12,color:"#155724"}}>✓ Apify connected · Claude AI ready · {cfg.unitName||"SMIU"}</div>}
-
-        <div style={s.card}>
-          <div style={s.sec}>Analyst information</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            <div><span style={s.lbl}>Full name *</span><input style={s.inp} placeholder="Inspector Ali Hassan" value={analystName} onChange={e=>setAnalystName(e.target.value)}/></div>
-            <div><span style={s.lbl}>Badge / ID</span><input style={s.inp} placeholder="FIA-2341" value={analystBadge} onChange={e=>setAnalystBadge(e.target.value)}/></div>
-          </div>
-          <div><span style={s.lbl}>Department</span><input style={s.inp} placeholder="FIA Cybercrime Wing, Islamabad" value={department} onChange={e=>setDepartment(e.target.value)}/></div>
-        </div>
-
-        <div style={s.card}>
-          <div style={s.sec}>Target profile URL</div>
-          <input style={{...s.inp,fontSize:14,marginBottom:10}} placeholder="https://www.facebook.com/username" value={profileUrl} onChange={e=>{setProfileUrl(e.target.value);setDetectedPf(detectPlatform(e.target.value));}}/>
-          {detectedPf
-            ? <div style={{background:"#d4edda",border:"1px solid #c3e6cb",borderRadius:8,padding:"8px 12px",fontSize:13,color:"#155724",fontWeight:500}}>✓ Platform detected: <b>{detectedPf}</b></div>
-            : profileUrl.length>8
-              ? <div style={{background:"#fff3cd",border:"1px solid #ffc107",borderRadius:8,padding:"8px 12px",fontSize:13,color:"#664d03"}}>Unrecognised URL — supported: x.com · instagram.com · facebook.com · tiktok.com · youtube.com</div>
-              : <div style={{fontSize:12,color:"#888"}}>Supported: X · Instagram · Facebook · TikTok · YouTube</div>
-          }
-        </div>
-
-        {detectedPf&&<div style={s.card}>
-          <div style={s.sec}>Posts to retrieve</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
-            {[5,10,15,20].map(n=>(
-              <button key={n} onClick={()=>setPostCount(n)}
-                style={{...s.btn(postCount===n?"#185FA5":"#f0f0f0",postCount===n?"#fff":"#333","1px solid "+(postCount===n?"#185FA5":"#ccc")),
-                  fontWeight:postCount===n?700:500, minWidth:64}}>
-                {postCount===n?"✓ ":""}{n} posts
-              </button>
-            ))}
-          </div>
-          <div style={{fontSize:12,color:"#185FA5",fontWeight:500}}>
-            Selected: last <b>{postCount}</b> posts will be fetched and analysed
-          </div>
-        </div>}
-
-        <button onClick={startAnalysis} disabled={!analystName||!detectedPf||!apifyReady}
-          style={{...s.btn(analystName&&detectedPf&&apifyReady?"#185FA5":"#aaa","#fff"),width:"100%",padding:"12px",fontSize:15,fontWeight:600,opacity:analystName&&detectedPf&&apifyReady?1:0.55}}>
-          Fetch &amp; analyse →
-        </button>
-      </div>
-    </div>
-  );
-
-  // ═══ LOADING ══════════════════════════════════════════════════════════════
-  if (step==="loading") return (
-    <div style={{minHeight:"100vh",background:"#f4f6f9"}}>
-      <TopBar/>
-      <div style={{maxWidth:500,margin:"3rem auto",padding:"1rem"}}>
-        <div style={{...s.card,padding:"2rem",textAlign:"center"}}>
-          <div style={{width:48,height:48,border:"4px solid #e0e0e0",borderTop:"4px solid #185FA5",borderRadius:"50%",margin:"0 auto 16px",animation:"spin 1s linear infinite"}}/>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          <div style={{fontSize:11,color:"#888",marginBottom:4,textTransform:"uppercase",letterSpacing:.8}}>Case {caseRef}</div>
-          <div style={{fontSize:15,fontWeight:600,marginBottom:14,color:"#111"}}>{progress.msg||"Initialising…"}</div>
-          {progress.total>0&&<>
-            <div style={{height:6,background:"#e0e0e0",borderRadius:4,margin:"0 0 8px",overflow:"hidden"}}>
-              <div style={{height:"100%",background:"#185FA5",width:`${(progress.current/progress.total)*100}%`,borderRadius:4,transition:"width .4s"}}/>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#888",marginBottom:12}}>
-              <span>{progress.current}/{progress.total} posts</span>
-              <span>{Math.round((progress.current/progress.total)*100)}%</span>
-            </div>
-          </>}
-          <div style={{display:"flex",flexDirection:"column",gap:8,textAlign:"left",marginTop:8}}>
-            {[
-              {label:"Authenticate with Apify",      done:progress.phase==="ai"||progress.current>0},
-              {label:"Start Actor run",              done:progress.phase==="ai"},
-              {label:"Retrieve posts from platform", done:progress.phase==="ai"},
-              {label:"Run Claude AI on each post",   done:progress.current===progress.total&&progress.total>0},
-              {label:"Map PECA 2016 provisions",     done:progress.current===progress.total&&progress.total>0},
-            ].map(({label,done})=>(
-              <div key={label} style={{display:"flex",alignItems:"center",gap:9,fontSize:13,color:done?"#155724":"#888"}}>
-                <span style={{fontSize:16}}>{done?"✓":"○"}</span><span>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ═══ REVIEW ═══════════════════════════════════════════════════════════════
-  if (step==="review") return (
-    <div style={{minHeight:"100vh",background:"#f4f6f9"}}>
-      <TopBar/>
-      {showSettings&&<Settings onClose={()=>{setShowSettings(false);reloadCfg();}}/>}
-      {showBilling&&<BillingDashboard onClose={()=>setShowBilling(false)}/>}
-      <div style={{maxWidth:940,margin:"0 auto",padding:"1rem"}}>
-        <div style={{...s.card,padding:"12px 16px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-            <div style={{display:"flex",gap:12,alignItems:"center"}}>
-              <div style={{width:46,height:46,borderRadius:"50%",background:platformColor(account.platform),display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#fff",flexShrink:0}}>{account.avatar}</div>
-              <div>
-                <div style={{fontSize:15,fontWeight:600,color:"#111"}}>{account.name}</div>
-                <div style={{fontSize:12,color:"#666"}}>{account.platform} · {account.handle}</div>
-                <div style={{fontSize:11,color:"#185FA5"}}>{account.url}</div>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-              <div style={{background:"#f0f0f0",borderRadius:8,padding:"6px 12px",fontSize:12,display:"flex",gap:12,border:"1px solid #e0e0e0"}}>
-                <span>📋 {posts.length}</span>
-                <span style={{color:"#1D9E75"}}>✓ {validatedIds.length}</span>
-                <span style={{color:"#E24B4A"}}>✗ {Object.values(rejected).filter(Boolean).length}</span>
-                <span style={{color:"#A32D2D"}}>⚑ {posts.filter(p=>(aiResults[p.id]?.violations?.length||0)>0).length}</span>
-              </div>
-              {canReport
-                ? <button onClick={()=>setStep("report")} style={s.btn("#185FA5","#fff")}>Generate report ({validatedIds.length})</button>
-                : <button disabled style={{...s.btn("#ccc","#999"),opacity:.6}}>Validate {minVal-validatedIds.length} more</button>
-              }
-            </div>
-          </div>
-        </div>
-
-        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-          {[["all","All",posts.length],["flagged","AI flagged",posts.filter(p=>(aiResults[p.id]?.violations?.length||0)>0).length],["validated","Validated",validatedIds.length],["rejected","Rejected",Object.values(rejected).filter(Boolean).length]].map(([key,label,count])=>(
-            <button key={key} onClick={()=>setFilter(key)} style={s.btn(filter===key?"#185FA5":"#f0f0f0",filter===key?"#fff":"#333","1px solid "+(filter===key?"#185FA5":"#ccc"))}>
-              {label} ({count})
-            </button>
-          ))}
-        </div>
-
-        {filteredPosts.map(post=>{
-          const ai=aiResults[post.id]||{}, sev=ai.severity||"medium";
-          const isV=validated[post.id], isR=rejected[post.id], isEx=expanded===post.id;
-          return (
-            <div key={post.id} style={{...s.card,border:isV?"2px solid #1D9E75":isR?"2px solid #E24B4A":"1px solid #e0e0e0"}}>
-              {(isV||isR)&&<div style={{background:isV?"#d4edda":"#f8d7da",margin:"-1rem -1.25rem 12px",padding:"6px 16px",borderRadius:"12px 12px 0 0",fontSize:12,fontWeight:600,color:isV?"#155724":"#721c24"}}>
-                {isV?"✓ Validated — included in report":"✗ False positive — excluded"}
-              </div>}
-              <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:16}}>
-                <div>
-                  <div style={{fontSize:11,color:"#888",fontWeight:500,marginBottom:6}}>Post · {account.platform}</div>
-                  <PostCard post={post} account={account} platform={account.platform}/>
-                  <div style={{marginTop:6,fontSize:11,color:"#185FA5",wordBreak:"break-all"}}>{post.url}</div>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:9}}>
-                  <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={s.pill(SEV_BG[sev],SEV_COLOR[sev])}>{sev.toUpperCase()}</span>
-                    <span style={{fontSize:12,color:"#666"}}>Confidence: <b>{ai.confidence||"—"}%</b></span>
-                    <span style={{fontSize:11,background:"#f0f0f0",padding:"2px 8px",borderRadius:20,color:"#666",textTransform:"uppercase"}}>{post.type}</span>
-                  </div>
-                  {ai.summary&&<div style={{background:"#f8f9fa",borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,border:"1px solid #e9ecef"}}><span style={{fontSize:11,color:"#888",fontWeight:600}}>AI summary · </span>{ai.summary}</div>}
-                  {ai.risk_level&&ai.risk_level!=="No significant risk identified"&&<div style={{borderLeft:"3px solid #E24B4A",paddingLeft:9,fontSize:12,color:"#666",lineHeight:1.5}}><b style={{color:"#A32D2D"}}>Risk: </b>{ai.risk_level}</div>}
-                  <div>
-                    <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:4}}>Detected violations</div>
-                    {getV(post.id).length?getV(post.id).map(v=><span key={v} style={s.pill("#FCEBEB","#A32D2D")}>{v}</span>):<span style={{fontSize:12,color:"#999"}}>None detected</span>}
-                  </div>
-                  <div>
-                    <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:4}}>PECA provisions</div>
-                    {getP(post.id).length?getP(post.id).map(p=>{const l=PECA_LAWS.find(x=>x.id===p);return <span key={p} style={s.pill("#E6F1FB","#185FA5")}>{l?.label||p}</span>}):<span style={{fontSize:12,color:"#999"}}>None</span>}
-                  </div>
-                  <div>
-                    <span style={{fontSize:11,fontWeight:600,color:"#555",display:"block",marginBottom:3}}>Analyst note</span>
-                    <textarea style={{...s.inp,minHeight:40,resize:"vertical",fontSize:12}} placeholder="Optional observation…" value={analystNote[post.id]||""} onChange={e=>setAnalystNote(n=>({...n,[post.id]:e.target.value}))}/>
-                  </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    <button onClick={()=>setExpanded(isEx?null:post.id)} style={s.btn("#f0f0f0","#555","1px solid #ccc")}>{isEx?"Close":"Edit violations"}</button>
-                    <button onClick={()=>doValidate(post.id)} style={s.btn(isV?"#1D9E75":"#f0f0f0",isV?"#fff":"#333","1px solid "+(isV?"#1D9E75":"#ccc"))}>{isV?"✓ Validated":"Validate"}</button>
-                    <button onClick={()=>doReject(post.id)} style={s.btn(isR?"#E24B4A":"#f0f0f0",isR?"#fff":"#333","1px solid "+(isR?"#E24B4A":"#ccc"))}>{isR?"✗ Rejected":"Reject"}</button>
-                  </div>
-                  {isEx&&<div style={{borderTop:"1px solid #e0e0e0",paddingTop:10}}>
-                    <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:5}}>Community violations</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
-                      {COMMUNITY_VIOLATIONS.map(v=>{const a=getV(post.id).includes(v);return<button key={v} onClick={()=>toggleV(post.id,v)} style={s.btn(a?"#FCEBEB":"#f0f0f0",a?"#A32D2D":"#555","1px solid "+(a?"#F7C1C1":"#ccc"))}>{v}</button>;})}
-                    </div>
-                    <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:5}}>PECA provisions</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                      {PECA_LAWS.map(law=>{const a=getP(post.id).includes(law.id);return<button key={law.id} onClick={()=>toggleP(post.id,law.id)} style={s.btn(a?"#E6F1FB":"#f0f0f0",a?"#185FA5":"#555","1px solid "+(a?"#B5D4F4":"#ccc"))}>{law.label}</button>;})}
-                    </div>
-                  </div>}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  // ═══ REPORT ═══════════════════════════════════════════════════════════════
-  if (step==="report") {
-    const vPosts=posts.filter(p=>validated[p.id]);
-    const allV=[...new Set(vPosts.flatMap(p=>getV(p.id)))];
-    const allP=[...new Set(vPosts.flatMap(p=>getP(p.id)))];
-    const overallSev=vPosts.some(p=>aiResults[p.id]?.severity==="critical")?"critical":"high";
-    return (
-      <div style={{minHeight:"100vh",background:"#f4f6f9"}}>
-        <TopBar/>
-        <div style={{maxWidth:860,margin:"0 auto",padding:"1rem"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+          {/* User */}
+          <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"#185FA5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:600,color:"#fff",flexShrink:0}}>{initials}</div>
             <div>
-              <div style={{fontSize:11,fontWeight:600,color:"#888",textTransform:"uppercase",letterSpacing:.8}}>PTA Block Request · {caseRef}</div>
-              <div style={{fontSize:18,fontWeight:700,color:"#111"}}>{account.name} · {vPosts.length} exhibits</div>
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setStep("review")} style={s.btn("#f0f0f0","#333","1px solid #ccc")}>← Edit</button>
-              <button onClick={()=>window.print()} style={s.btn("#555","#fff")}>Print</button>
-              <button onClick={exportReport} style={s.btn("#1D9E75","#fff")}>⬇ Export HTML</button>
+              <div style={{color:"#fff",fontSize:11,fontWeight:500}}>{user.name}</div>
+              <div style={{color:roleColors[user.role]||"#aaa",fontSize:9,fontWeight:500}}>{roleLabels[user.role]||user.role}</div>
             </div>
           </div>
-          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"2rem",boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
-            <div style={{textAlign:"center",marginBottom:20,paddingBottom:16,borderBottom:"2px solid #333"}}>
-              <div style={{fontSize:11,letterSpacing:1.5,color:"#888",textTransform:"uppercase"}}>Islamic Republic of Pakistan</div>
-              <div style={{fontSize:22,fontWeight:700,marginTop:4,color:"#111"}}>Pakistan Telecommunication Authority</div>
-              <div style={{fontSize:14,color:"#555",marginTop:2}}>Social Media Account Block Request</div>
-              <div style={{fontSize:11,color:"#888",marginTop:3}}>Prevention of Electronic Crimes Act 2016 · PTA (Re-organisation) Act 1996</div>
-              <div style={{marginTop:10}}>
-                <span style={s.pill(SEV_BG[overallSev],SEV_COLOR[overallSev])}>Severity: {overallSev.toUpperCase()}</span>
-                <span style={s.pill("#E6F1FB","#185FA5")}>Case: {caseRef}</span>
-                <span style={s.pill("#EAF3DE","#3B6D11")}>{account.platform}</span>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:18}}>
-              {[["Case reference",caseRef],["Date",reportDate],["Analyst",analystName],["Badge",analystBadge||"—"],["Department",department||cfg.unitName||"—"],["Platform",account.platform],["Account",account.name],["Handle",account.handle],["Profile URL",account.url],["Followers",account.followers],["Posts retrieved",posts.length],["Exhibits",vPosts.length]].map(([k,v])=>(
-                <div key={k} style={{background:"#f8f9fa",borderRadius:8,padding:"7px 12px",border:"1px solid #e9ecef"}}>
-                  <div style={{fontSize:11,color:"#888"}}>{k}</div>
-                  <div style={{fontSize:13,fontWeight:600,color:"#111",wordBreak:"break-all"}}>{v}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{marginBottom:12}}>
-              <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Violations identified</div>
-              {allV.map(v=><span key={v} style={s.pill("#FCEBEB","#A32D2D")}>{v}</span>)}
-            </div>
-            <div style={{marginBottom:20}}>
-              <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>PECA 2016 provisions</div>
-              {allP.map(p=>{const l=PECA_LAWS.find(x=>x.id===p);return<span key={p} style={s.pill("#E6F1FB","#185FA5")}>{l?.label||p}</span>;})}
-            </div>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Evidence exhibits</div>
-            {vPosts.map((post,i)=>{
-              const ai=aiResults[post.id]||{},sev=ai.severity||"high";
-              return(
-                <div key={post.id} style={{border:"1px solid #e0e0e0",borderRadius:8,marginBottom:16,overflow:"hidden"}}>
-                  <div style={{background:"#f8f9fa",padding:"8px 14px",borderBottom:"1px solid #e0e0e0",display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
-                    <span style={{fontSize:13,fontWeight:600}}>Exhibit {i+1} — {post.type.toUpperCase()}</span>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <span style={{fontSize:11,color:"#888"}}>Posted: {post.date}</span>
-                      <span style={s.pill(SEV_BG[sev],SEV_COLOR[sev])}>{sev} · {ai.confidence}%</span>
-                    </div>
+          {/* Nav */}
+          <div style={{flex:1,paddingBottom:8}}>
+            {NAV.map((item,i)=>{
+              if (item.section) return <div key={i} style={{padding:"8px 16px 3px",fontSize:9,fontWeight:600,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:1}}>{item.section}</div>;
+              const isActive = page===item.id || item.subs?.some(s=>s.id===page);
+              return (
+                <div key={item.id}>
+                  <div
+                    onClick={item.noClick ? undefined : ()=>setPage(item.id)}
+                    style={{display:"flex",alignItems:"center",gap:9,padding:"8px 16px",cursor:item.noClick?"default":"pointer",color:isActive?"#fff":"rgba(255,255,255,0.6)",fontSize:12,borderLeft:`3px solid ${isActive?"#378ADD":"transparent"}`,background:isActive&&!item.noClick?"rgba(24,95,165,0.3)":"transparent",opacity:item.noClick?.8:1}}
+                  >
+                    {item.icon&&<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{opacity:isActive?1:.7,flexShrink:0}}><path d={item.icon}/></svg>}
+                    {item.label}
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"260px 1fr"}}>
-                    <div style={{padding:12,borderRight:"1px solid #e0e0e0"}}>
-                      <PostCard post={post} account={account} platform={account.platform}/>
-                      <div style={{marginTop:6,fontSize:11,color:"#185FA5",wordBreak:"break-all"}}>{post.url}</div>
-                      <div style={{marginTop:4,fontSize:11,color:"#888"}}>❤️{numFmt(post.likes)} 💬{numFmt(post.comments)} ↗{numFmt(post.shares)}</div>
-                    </div>
-                    <div style={{padding:12}}>
-                      <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>AI analysis (validated)</div>
-                      {ai.summary&&<div style={{fontSize:13,lineHeight:1.55,marginBottom:8}}>{ai.summary}</div>}
-                      {ai.risk_level&&ai.risk_level!=="No significant risk identified"&&<div style={{fontSize:12,color:"#666",marginBottom:8,borderLeft:"3px solid #E24B4A",paddingLeft:8}}><b style={{color:"#A32D2D"}}>Risk: </b>{ai.risk_level}</div>}
-                      <div style={{marginBottom:6}}>
-                        <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:4}}>Violations</div>
-                        {getV(post.id).map(v=><span key={v} style={s.pill("#FCEBEB","#A32D2D")}>{v}</span>)}
-                      </div>
-                      <div>
-                        <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:4}}>PECA</div>
-                        {getP(post.id).map(p=>{const l=PECA_LAWS.find(x=>x.id===p);return<span key={p} style={s.pill("#E6F1FB","#185FA5")}>{l?.label||p}</span>;})}
-                      </div>
-                      {analystNote[post.id]&&<div style={{fontSize:12,background:"#fffbe6",borderRadius:8,padding:"7px 10px",border:"1px solid #f0d060",marginTop:8}}><b style={{color:"#888"}}>Analyst note: </b>{analystNote[post.id]}</div>}
-                    </div>
-                  </div>
+                  {item.subs?.map(sub=>(
+                    <div key={sub.id} onClick={()=>setPage(sub.id)}
+                      style={{padding:"5px 16px 5px 38px",fontSize:11,color:page===sub.id?"#378ADD":"rgba(255,255,255,0.45)",cursor:"pointer"}}
+                    >{sub.label}</div>
+                  ))}
                 </div>
               );
             })}
-            <div style={{background:"#f8f9fa",borderRadius:8,padding:"14px 16px",marginBottom:16,border:"1px solid #e9ecef"}}>
-              <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Formal request to PTA</div>
-              <div style={{fontSize:13,lineHeight:1.85}}>On the basis of <b>{vPosts.length} validated post{vPosts.length!==1?"s":""}</b> from <b>{account.handle}</b> on <b>{account.platform}</b>, this unit requests PTA to:</div>
-              <ol style={{margin:"10px 0 0 18px",fontSize:13,lineHeight:2.1}}>
-                <li>Immediately suspend and permanently block <b>{account.handle}</b>;</li>
-                <li>Serve permanent takedown for Exhibits {vPosts.map((_,i)=>i+1).join(", ")};</li>
-                <li>Pursue legal action under <b>{allP.map(p=>PECA_LAWS.find(l=>l.id===p)?.label||p).join("; ")||"applicable PECA provisions"}</b>;</li>
-                <li>Provide confirmation to case <b>{caseRef}</b>.</li>
-              </ol>
+          </div>
+          {/* Logout */}
+          <div style={{padding:"10px 16px",borderTop:"1px solid rgba(255,255,255,0.1)"}}>
+            <div onClick={logout} style={{color:"rgba(255,255,255,0.4)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+              Sign out
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,paddingTop:16,borderTop:"1px solid #e0e0e0"}}>
-              <div><div style={{height:40,borderBottom:"1px solid #999",marginBottom:6}}/><div style={{fontSize:13,fontWeight:600}}>{analystName}</div><div style={{fontSize:11,color:"#666"}}>{analystBadge?"Badge: "+analystBadge+" · ":""}{department||cfg.unitName}</div><div style={{fontSize:11,color:"#666"}}>Date: {reportDate}</div></div>
-              <div><div style={{height:40,borderBottom:"1px solid #999",marginBottom:6}}/><div style={{fontSize:13,fontWeight:600}}>Authorising Officer</div><div style={{fontSize:11,color:"#666"}}>Signature / Stamp</div></div>
-            </div>
-            <div style={{marginTop:14,textAlign:"center",fontSize:11,color:"#aaa"}}>{caseRef} · {reportDate} · {cfg.reportFooter||"SMIU — CONFIDENTIAL"}</div>
           </div>
         </div>
+      )}
+
+      {/* Main */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Topbar */}
+        {miniNav ? (
+          <div style={{height:32,background:"#0c2340",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",flexShrink:0,borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:18,height:18,background:"#378ADD",borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+              </div>
+              <span style={{color:"#fff",fontSize:11,fontWeight:600}}>SMIU</span>
+              <span style={{color:"rgba(255,255,255,0.5)",fontSize:10}}>PTA submission mode — evidence | PTA form</span>
+            </div>
+            <button onClick={()=>setMiniNav(false)} style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",color:"#fff",borderRadius:5,padding:"2px 10px",fontSize:10,cursor:"pointer"}}>✕ Exit submission mode</button>
+          </div>
+        ) : (
+          <div style={{height:48,background:"#fff",borderBottom:"1px solid #e0e0e0",padding:"0 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+            <div style={{fontSize:14,fontWeight:600,color:"#111"}}>{PAGE_TITLES[page]||page}</div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:11,color:"#888"}}>{new Date().toLocaleDateString("en-PK",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}</span>
+              <span style={{background:"#FAEEDA",color:"#854F0B",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:20}}>Admin</span>
+              <div style={{width:30,height:30,borderRadius:"50%",background:"#185FA5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:"#fff"}}>{initials}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        <div style={{flex:1,overflowY:"auto",padding:16}}>
+          <PageComponent
+            onNavigate={setPage}
+            setMiniNav={setMiniNav}
+            miniNav={miniNav}
+          />
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+export default function App() {
+  return <AuthProvider><Shell/></AuthProvider>;
 }

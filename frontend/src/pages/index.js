@@ -1,0 +1,18 @@
+export const s = {
+  card: {background:"#fff",border:"1px solid #e8e8e8",borderRadius:10,marginBottom:12,boxShadow:"0 1px 3px rgba(0,0,0,0.05)"},
+  ch:   {padding:"11px 14px",borderBottom:"1px solid #f0f0f0",display:"flex",justifyContent:"space-between",alignItems:"center"},
+  ct:   {fontSize:13,fontWeight:600,color:"#111"},
+  cb:   {padding:14},
+  btn:  (bg,c,br)=>({background:bg,color:c,border:br||"none",borderRadius:7,padding:"6px 12px",fontSize:12,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}),
+  inp:  {width:"100%",boxSizing:"border-box",padding:"7px 9px",border:"1px solid #ccc",borderRadius:7,fontSize:12,color:"#111",background:"#fff"},
+  lbl:  {fontSize:11,fontWeight:500,color:"#444",display:"block",marginBottom:3},
+  pill: (bg,c)=>({background:bg,color:c,fontSize:10,fontWeight:500,padding:"2px 7px",borderRadius:20,display:"inline-block"}),
+  fg:   {display:"flex",flexDirection:"column",gap:3,marginBottom:9},
+  fr:   {display:"grid",gridTemplateColumns:"1fr 1fr",gap:9},
+  sc:   {background:"#fff",border:"1px solid #e8e8e8",borderRadius:8,padding:"11px 13px"},
+  sl:   {fontSize:10,color:"#888",marginBottom:3,fontWeight:500,textTransform:"uppercase",letterSpacing:.5},
+  sv:   {fontSize:22,fontWeight:700,lineHeight:1},
+  ss:   {fontSize:10,color:"#888",marginTop:2},
+  sec:  {fontSize:10,fontWeight:600,color:"#185FA5",textTransform:"uppercase",letterSpacing:.5,margin:"12px 0 8px",paddingBottom:4,borderBottom:"1px solid #e8f0ff"},
+  tbl:  {width:"100%",borderCollapse:"collapse",fontSize:11},
+};
