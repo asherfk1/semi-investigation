@@ -1,4 +1,5 @@
 import { useState } from "react";
+import BillingDashboard, { recordBillingEntry } from "./Billing";
 
 const BACKEND = "https://semi-investigation.onrender.com";
 
@@ -424,6 +425,7 @@ function Settings({ onClose }) {
 export default function App() {
   const [step, setStep]             = useState("input");
   const [showSettings, setShowSettings] = useState(false);
+  const [showBilling, setShowBilling]   = useState(false);
   const [cfg, setCfg]               = useState(loadCfg);
   const [profileUrl, setProfileUrl] = useState("");
   const [detectedPf, setDetectedPf] = useState(null);
@@ -494,6 +496,11 @@ export default function App() {
       catch(e) { results[p.id]={severity:"medium",confidence:70,violations:[],peca:[],summary:"Error: "+e.message,risk_level:"Unknown"}; }
     }
     setAiResults(results);
+    // Record billing entry
+    recordBillingEntry({
+      caseRef, analystName, platform:pf,
+      postCount, accountHandle:acct.handle, accountUrl:profileUrl,
+    });
     setStep("review");
   }
 
@@ -584,6 +591,7 @@ export default function App() {
       <div style={{display:"flex",gap:8}}>
         <button onClick={()=>setStep("input")} style={{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>🏠 Home</button>
         {step==="report"&&<button onClick={exportReport} style={{background:"#fff",color:"#185FA5",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>⬇ Export</button>}
+        <button onClick={()=>setShowBilling(true)} style={{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>💰 Billing</button>
         <button onClick={()=>{setShowSettings(true);reloadCfg();}} style={{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>⚙ Settings</button>
       </div>
     </div>
@@ -594,6 +602,7 @@ export default function App() {
     <div style={{minHeight:"100vh",background:"#f4f6f9"}}>
       <TopBar/>
       {showSettings&&<Settings onClose={()=>{setShowSettings(false);reloadCfg();}}/>}
+      {showBilling&&<BillingDashboard onClose={()=>setShowBilling(false)}/>}
       <div style={{maxWidth:580,margin:"0 auto",padding:"1.5rem 1rem"}}>
         {!apifyReady&&<div style={{background:"#fff3cd",border:"1px solid #ffc107",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#664d03"}}>⚠ <b>Apify token not configured.</b> Open ⚙ Settings to add your token.</div>}
         {fetchError&&<div style={{background:"#f8d7da",border:"1px solid #f5c6cb",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#721c24"}}><b>Error:</b> {fetchError}</div>}
@@ -685,6 +694,7 @@ export default function App() {
     <div style={{minHeight:"100vh",background:"#f4f6f9"}}>
       <TopBar/>
       {showSettings&&<Settings onClose={()=>{setShowSettings(false);reloadCfg();}}/>}
+      {showBilling&&<BillingDashboard onClose={()=>setShowBilling(false)}/>}
       <div style={{maxWidth:940,margin:"0 auto",padding:"1rem"}}>
         <div style={{...s.card,padding:"12px 16px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
